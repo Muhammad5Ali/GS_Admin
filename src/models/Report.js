@@ -1,19 +1,30 @@
 import mongoose from "mongoose";
 
-const complaintSchema = new mongoose.Schema({
+const reportSchema = new mongoose.Schema({
   title: {
     type: String,
     required: true,
     trim: true
   },
   image: {
-    type: String,  // Usually store image as URL or path (base64 not recommended in schema directly)
+    type: String,
     required: true
   },
   details: {
     type: String,
     required: true,
     trim: true
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      required: true
+    },
+    coordinates: {
+      type: [Number],
+      required: true
+    }
   },
   address: {
     type: String,
@@ -24,15 +35,22 @@ const complaintSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-   user:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"User",
-        required:false,
-    }
-},{
-    timestamps:true
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  photoTimestamp: {
+    type: Date,
+    required: true
+  }
+}, {
+  timestamps: true
 });
 
-const Complaint = mongoose.model('Complaint', complaintSchema);
+// Create geospatial index
+reportSchema.index({ location: '2dsphere' });
 
-export default Complaint;
+const Report = mongoose.model('Report', reportSchema);
+
+export default Report;

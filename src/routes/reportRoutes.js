@@ -6,29 +6,32 @@ import protectRoute from '../middleware/auth.middleware.js';
 
 const router=express.Router();
 
-router.post("/",protectRoute,async(req,res)=>{
-    try {
+router.post("/", protectRoute, async (req, res) => {
+  try {
+    const { title, image, details, address, latitude, longitude, photoTimestamp } = req.body;
+
+    if (!title || !image || !details || !address || !latitude || !longitude) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Upload to Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(image);
     
-        const{title,image,details,address,createdTime}=req.body;
-         //checking if all of them are being provided
-        if(!title|| !image || !details || !address || !createdTime){
-            return res.status(400).json({message:"All fields are required"});
-        }
-        //upload the image to the cloudinary
-        const uploadResponse=await cloudinary.uploader.upload(image);
-        const imageUrl=uploadResponse.secure_url;
-         //save to db
-        const newReport=new Report({
-           title,
-           image:imageUrl,
-           details,
-           address,
-          createdTime,
-          user:req.user._id,
-        });
-        await newReport.save();
-        //we have send a response so 201 will be better 
-        res.status(201).json(newReport);
+    const newReport = new Report({
+      title,
+      image: uploadResponse.secure_url,
+      details,
+      address,
+      location: {
+        type: "Point",
+        coordinates: [longitude, latitude]
+      },
+      photoTimestamp,
+      user: req.user._id
+    });
+
+    await newReport.save();
+    res.status(201).json(newReport);
 
 
     } catch (error) {
@@ -43,7 +46,7 @@ router.post("/",protectRoute,async(req,res)=>{
 router.get("/",protectRoute,async(req,res)=>{
  try {
     //example call from react-native-frontend
-    //const response=await fetch("http://localhost:3000/api/books?page=1&limit=5");
+    //const response=await fetch("http://localhost:3000/api/reports?page=1&limit=5");
     const page=req.query.page ||1;
     const limit=req.query.limit ||5;
     const skip=(page-1)*limit;
