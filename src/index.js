@@ -14,10 +14,13 @@ job.start(); //start the cron job
 //middleware allows u to access the email, name etc, allow to parse json data
 app.use(express.json());
 // app.use(cors());
+// Add full CORS configuration
 app.use(cors({
-  origin: true,
-  credentials: true,
-  exposedHeaders: ['Authorization']
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'],
+  credentials: true
 }));
 
 app.use("/api/auth",authRoutes);

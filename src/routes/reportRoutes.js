@@ -8,22 +8,7 @@ const router=express.Router();
 
 router.post("/",protectRoute,async(req,res)=>{
     try {
-        // Add this after field existence checks
-const allowedMimeTypes = [
-  'image/jpeg',
-  'image/png',
-  'image/webp'
-];
-
-const isValidMimeType = allowedMimeTypes.some(type => 
-  image.startsWith(`data:${type}`)
-);
-
-if (!isValidMimeType) {
-  return res.status(400).json({
-    message: "Invalid image format. Only JPEG, PNG, and WEBP allowed"
-  });
-}
+    
         const{title,image,details,address,createdTime}=req.body;
          //checking if all of them are being provided
         if(!title|| !image || !details || !address || !createdTime){
