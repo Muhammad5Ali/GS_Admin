@@ -6,39 +6,87 @@ import protectRoute from '../middleware/auth.middleware.js';
 
 const router=express.Router();
 
+// Add request logging middleware
+router.use((req, res, next) => {
+  console.log(`Incoming ${req.method} to ${req.path}`);
+  next();
+});
+
 router.post("/", protectRoute, async (req, res) => {
   try {
     const { title, image, details, address, latitude, longitude, photoTimestamp } = req.body;
 
+    // Validation
     if (!title || !image || !details || !address || !latitude || !longitude) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Upload to Cloudinary
-    const uploadResponse = await cloudinary.uploader.upload(image);
-    
+    // Base64 validation
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(image)) {
+      return res.status(400).json({ message: "Invalid image format" });
+    }
+
+    // Cloudinary upload with error handling
+    let uploadResponse;
+    try {
+      uploadResponse = await cloudinary.uploader.upload(
+        `data:image/jpeg;base64,${image}`, 
+        {
+          resource_type: "image",
+          folder: "reports",
+          allowed_formats: ['jpg', 'jpeg', 'png'],
+          transformation: [{ width: 800, height: 600, crop: 'limit' }]
+        }
+      );
+    } catch (uploadError) {
+      console.error("Cloudinary Upload Error:", uploadError);
+      return res.status(500).json({ 
+        message: "Image upload failed",
+        error: uploadError.message 
+      });
+    }
+
+    // Create report
     const newReport = new Report({
-      title,
+      title: title.trim(),
       image: uploadResponse.secure_url,
-      details,
-      address,
+      details: details.trim(),
+      address: address.trim(),
       location: {
         type: "Point",
-        coordinates: [longitude, latitude]
+        coordinates: [parseFloat(longitude), parseFloat(latitude)]
       },
-      photoTimestamp,
+      photoTimestamp: photoTimestamp ? new Date(photoTimestamp) : new Date(),
       user: req.user._id
     });
 
-    await newReport.save();
-    res.status(201).json(newReport);
+    // Save to database
+    const savedReport = await newReport.save();
+    
+    // Success response
+    res.status(201).json({
+      message: "Report created successfully",
+      report: savedReport
+    });
 
-
-    } catch (error) {
-          console.log("Errors in create report route:",error);
-        res.status(500).json({message:error.message});
+  } catch (error) {
+    console.error("Server Error:", error);
+    
+    // Handle specific error types
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: "Validation Error",
+        error: error.message 
+      });
     }
-})
+    
+    // General error response
+    res.status(500).json({ 
+      message: "Internal server error",
+      error: error.message 
+    });
+  }
+});
 
 
 //pagination=>infinite loading
