@@ -15,6 +15,10 @@ router.use((req, res, next) => {
 router.post("/", protectRoute, async (req, res) => {
   try {
     const { title, image, details, address, latitude, longitude, photoTimestamp } = req.body;
+     // Add server-side image size validation
+    if (image && image.length > 7 * 1024 * 1024) { // 7MB limit
+      return res.status(413).json({ message: "Image too large (max 7MB)" });
+    }
 
     // Validation
     if (!title || !image || !details || !address || !latitude || !longitude) {
@@ -27,6 +31,25 @@ router.post("/", protectRoute, async (req, res) => {
     }
 
     // Cloudinary upload with error handling
+    // let uploadResponse;
+    // try {
+    //   uploadResponse = await cloudinary.uploader.upload(
+    //     `data:image/jpeg;base64,${image}`, 
+    //     {
+    //       resource_type: "image",
+    //       folder: "reports",
+    //       allowed_formats: ['jpg', 'jpeg', 'png'],
+    //       transformation: [{ width: 800, height: 600, crop: 'limit' }]
+    //     }
+    //   );
+    // } catch (uploadError) {
+    //   console.error("Cloudinary Upload Error:", uploadError);
+    //   return res.status(500).json({ 
+    //     message: "Image upload failed",
+    //     error: uploadError.message 
+    //   });
+    // }
+    // Optimize Cloudinary upload
     let uploadResponse;
     try {
       uploadResponse = await cloudinary.uploader.upload(
@@ -34,8 +57,11 @@ router.post("/", protectRoute, async (req, res) => {
         {
           resource_type: "image",
           folder: "reports",
-          allowed_formats: ['jpg', 'jpeg', 'png'],
-          transformation: [{ width: 800, height: 600, crop: 'limit' }]
+          quality: "auto:good", // Auto-optimize quality
+          transformation: [
+            { width: 800, height: 600, crop: 'limit' },
+            { quality: 'auto:best' } // Balance quality/size
+          ]
         }
       );
     } catch (uploadError) {

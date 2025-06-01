@@ -12,7 +12,20 @@ const app=express();
 const PORT=process.env.PORT || 3000;
 job.start(); //start the cron job
 //middleware allows u to access the email, name etc, allow to parse json data
-app.use(express.json());
+//app.use(express.json());
+// Increase payload size limit to 10MB
+app.use(express.json({ limit: '10mb' }));
+
+// Add error handling for large payloads
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 413) {
+    return res.status(413).json({
+      message: "Payload too large",
+      suggestion: "Compress images before uploading"
+    });
+  }
+  next();
+});
 // app.use(cors());
 // Add full CORS configuration
 app.use(cors({
