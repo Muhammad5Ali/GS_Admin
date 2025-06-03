@@ -164,7 +164,7 @@ router.get("/",protectRoute,async(req,res)=>{
     res.status(500).json({message:"Internal Server Error"});
  }
 })
-//get recommended reports by the logged in user
+//get reports that are being reported by the logged in user 
 router.get("/user",protectRoute,async(req,res)=>{
     try {
         const reports=await Report.find({user:req.user._id}).sort({createdAt:-1});
