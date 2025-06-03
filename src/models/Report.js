@@ -52,7 +52,7 @@ const reportSchema = new mongoose.Schema({
     type: String,
     enum: ['standard', 'hazardous', 'large'],
     default: 'standard'
-  }
+  },
 }, {
   timestamps: true
 });

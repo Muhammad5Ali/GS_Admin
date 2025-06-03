@@ -14,10 +14,10 @@ router.use((req, res, next) => {
 
 router.post("/", protectRoute, async (req, res) => {
   try {
-    const { title, image, details, address, latitude, longitude, photoTimestamp } = req.body;
+    const { title, image, details, address, latitude, longitude, photoTimestamp, reportType } = req.body;
     
     // Add server-side image size validation
-    if (image && image.length > 5 * 1024 * 1024) { // 5MB limit
+    if (image && image.length > 5 * 1024 * 1024) {
       return res.status(413).json({ message: "Image too large (max 5MB)" });
     }
     
@@ -26,26 +26,23 @@ router.post("/", protectRoute, async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Base64 validation
-    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(image)) {
+    // Better base64 validation (optional)
+    const base64Regex = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+    if (!base64Regex.test(image)) {
       return res.status(400).json({ message: "Invalid image format" });
     }
 
     // Optimize Cloudinary upload
-    let uploadResponse; // DECLARE OUTSIDE TRY BLOCK
+    let uploadResponse;
     try {
-      uploadResponse = await cloudinary.uploader.upload(
-        `data:image/jpeg;base64,${image}`, 
-        {
-          resource_type: "image",
-          folder: "reports",
-          quality: "auto",
-          transformation: [
-            { width: 800, height: 600, crop: 'limit' },
-            { quality: 'auto:best' }
-          ]
-        }
-      );
+      uploadResponse = await cloudinary.uploader.upload(image, { // Use the full data URI
+        folder: "reports",
+        quality: "auto",
+        transformation: [
+          { width: 800, height: 600, crop: 'limit' },
+          { quality: 'auto:best' }
+        ]
+      });
     } catch (uploadError) {
       console.error("Cloudinary Upload Error:", uploadError);
       return res.status(500).json({ 
@@ -54,10 +51,11 @@ router.post("/", protectRoute, async (req, res) => {
       });
     }
 
-    // Create report
+    // Create report - ADD REPORT TYPE HERE
     const newReport = new Report({
       title: title.trim(),
       image: uploadResponse.secure_url,
+      publicId: uploadResponse.public_id,
       details: details.trim(),
       address: address.trim(),
       location: {
@@ -66,15 +64,13 @@ router.post("/", protectRoute, async (req, res) => {
       },
       photoTimestamp: photoTimestamp ? new Date(photoTimestamp) : new Date(),
       user: req.user._id,
-      publicId: uploadResponse.public_id, // STORE PUBLIC ID
+      reportType: reportType || 'standard' // ADD THIS LINE
     });
 
     // Save to database
     const savedReport = await newReport.save();
-
-    // Extract report type from request body
-    const reportType = req.body.reportType || 'standard'; // Default to 'standard'
     
+    // Point calculation
     const pointsMap = {
       standard: 10,
       hazardous: 20,
@@ -85,10 +81,7 @@ router.post("/", protectRoute, async (req, res) => {
     // Update user's report count and points
     try {
       await User.findByIdAndUpdate(req.user._id, {
-        $inc: {   
-          reportCount: 1, 
-          points: pointsToAdd
-        }
+        $inc: { reportCount: 1, points: pointsToAdd }
       });
     } catch (updateError) {
       console.error("User update error:", updateError);
@@ -101,20 +94,7 @@ router.post("/", protectRoute, async (req, res) => {
 
   } catch (error) {
     console.error("Server Error:", error);
-    
-    // Handle specific error types
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: "Validation Error",
-        error: error.message 
-      });
-    }
-    
-    // General error response
-    res.status(500).json({ 
-      message: "Internal server error",
-      error: error.message 
-    });
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 });
 
