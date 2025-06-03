@@ -89,7 +89,12 @@ router.post("/", protectRoute, async (req, res) => {
     // Save to database
     const savedReport = await newReport.save();
     
-    // Success response
+    // Update user's report count and points
+    const user = await User.findById(req.user._id);
+    if (user) {
+      await user.incrementReportCount();
+    }
+    
     res.status(201).json({
       message: "Report created successfully",
       report: savedReport

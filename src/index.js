@@ -5,6 +5,7 @@ import job from "./lib/cron.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { connectDB } from "./lib/db.js";
 
 const app=express();
@@ -38,6 +39,8 @@ app.use(cors({
 
 app.use("/api/auth",authRoutes);
 app.use("/api/report",reportRoutes);
+// New user routes
+app.use("/api/users", userRoutes);
 
 app.listen(PORT,()=>{
     console.log(`Server is listening on port:${PORT}`);;
