@@ -30,21 +30,22 @@ router.post("/", protectRoute, async (req, res) => {
       return res.status(400).json({ message: "Invalid image format" });
     }
 
+
     // Optimize Cloudinary upload
-    //let uploadResponse;
+    let uploadResponse;
     try {
-    const uploadResponse = await cloudinary.uploader.upload(
-    `data:image/jpeg;base64,${image}`, 
-    {
-        resource_type: "image",
-        folder: "reports",
-        quality: "auto",
-        transformation: [
+      uploadResponse = await cloudinary.uploader.upload(
+        `data:image/jpeg;base64,${image}`, 
+        {
+          resource_type: "image",
+          folder: "reports",
+          quality: "auto", // Auto-optimize quality
+          transformation: [
             { width: 800, height: 600, crop: 'limit' },
-            { quality: 'auto:best' }
-        ]
-    }
-);
+            { quality: 'auto:best' } // Balance quality/size
+          ]
+        }
+      );
     } catch (uploadError) {
       console.error("Cloudinary Upload Error:", uploadError);
       return res.status(500).json({ 
@@ -64,8 +65,7 @@ router.post("/", protectRoute, async (req, res) => {
         coordinates: [parseFloat(longitude), parseFloat(latitude)]
       },
       photoTimestamp: photoTimestamp ? new Date(photoTimestamp) : new Date(),
-      user: req.user._id,
-      publicId: uploadResponse.public_id,
+      user: req.user._id
     });
 
     // Save to database
