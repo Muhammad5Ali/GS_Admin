@@ -168,7 +168,8 @@ router.delete("/:id", protectRoute, async (req, res) => {
     if (report.publicId) {
       try {
         console.log(`Deleting Cloudinary asset by publicId: ${report.publicId}`);
-        await cloudinary.uploader.destroy(report.publicId);
+        const result = await cloudinary.uploader.destroy(report.publicId);
+        console.log("Cloudinary deletion result:", result); // Add result logging
       } catch (deleteError) {
         console.error("Cloudinary deletion error (using stored publicId):", deleteError);
       }
@@ -180,14 +181,16 @@ router.delete("/:id", protectRoute, async (req, res) => {
         const uploadIndex = urlParts.findIndex(part => part === "upload");
         
         if (uploadIndex !== -1) {
-          const publicIdWithExtension = urlParts.slice(uploadIndex + 2).join('/');
-          const publicId = publicIdWithExtension.replace(/\.[^/.]+$/, "");
+          // Extract version and path segments
+          const versionSegment = urlParts[uploadIndex + 1];
+          const pathSegment = urlParts.slice(uploadIndex + 2).join('/');
           
-          // Add folder prefix
-          const fullPublicId = `reports/${publicId}`;
+          // Remove file extension
+          const publicId = pathSegment.replace(/\.[^/.]+$/, "");
           
-          console.log(`Deleting Cloudinary asset by extracted publicId: ${fullPublicId}`);
-          await cloudinary.uploader.destroy(fullPublicId);
+          console.log(`Deleting Cloudinary asset by extracted publicId: ${publicId}`);
+          const result = await cloudinary.uploader.destroy(publicId);
+          console.log("Cloudinary deletion result:", result); // Add result logging
         }
       } catch (deleteError) {
         console.error("Cloudinary deletion error (using URL extraction):", deleteError);

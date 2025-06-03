@@ -10,6 +10,10 @@ const reportSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  publicId: {
+    type: String,
+    default: "" // Set default as empty string
+  },
   details: {
     type: String,
     required: true,
