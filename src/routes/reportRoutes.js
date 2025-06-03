@@ -30,7 +30,25 @@ router.post("/", protectRoute, async (req, res) => {
       return res.status(400).json({ message: "Invalid image format" });
     }
 
-
+    // Cloudinary upload with error handling
+    // let uploadResponse;
+    // try {
+    //   uploadResponse = await cloudinary.uploader.upload(
+    //     `data:image/jpeg;base64,${image}`, 
+    //     {
+    //       resource_type: "image",
+    //       folder: "reports",
+    //       allowed_formats: ['jpg', 'jpeg', 'png'],
+    //       transformation: [{ width: 800, height: 600, crop: 'limit' }]
+    //     }
+    //   );
+    // } catch (uploadError) {
+    //   console.error("Cloudinary Upload Error:", uploadError);
+    //   return res.status(500).json({ 
+    //     message: "Image upload failed",
+    //     error: uploadError.message 
+    //   });
+    // }
     // Optimize Cloudinary upload
     let uploadResponse;
     try {
@@ -157,7 +175,7 @@ router.get("/user",protectRoute,async(req,res)=>{
     }
 })
 
-{/* router.delete("/:id",protectRoute,async(req,res)=>{
+ router.delete("/:id",protectRoute,async(req,res)=>{
     try {
         const report=await Report.findById(req.params.id);
         if(!report) return res.status(404).json({message:"Report not found"});
@@ -205,67 +223,5 @@ await User.findByIdAndUpdate(report.user, {
     
 
 
-});*/} 
-router.delete("/:id", protectRoute, async (req, res) => {
-    try {
-        const report = await Report.findById(req.params.id);
-        if (!report) return res.status(404).json({ message: "Report not found" });
-        
-        // Authorization check
-        if (report.user.toString() !== req.user._id.toString()) {
-            return res.status(401).json({ message: "You are not authorized to delete this report" });
-        }
-
-        // Cloudinary deletion with folder support - UPDATED SECTION
-        if (report.image && report.image.includes("cloudinary")) {
-            try {
-                // Extract the full public ID including folder path
-                const urlParts = report.image.split('/');
-                const uploadIndex = urlParts.findIndex(part => part === "upload");
-                
-                if (uploadIndex !== -1) {
-                    // Start from after the version segment (v1234567890)
-                    const publicIdWithExtension = urlParts.slice(uploadIndex + 2).join('/');
-                    
-                    // Remove file extension while preserving folder structure
-                    const publicId = publicIdWithExtension.replace(/\.[^/.]+$/, "");
-                    
-                    // Add folder prefix for organized deletion
-                    const folder = "reports/"; // Your folder name
-                    const fullPublicId = `${folder}${publicId}`;
-                    
-                    // Add debug log to verify extracted ID
-                    console.log(`Deleting Cloudinary asset: ${fullPublicId}`);
-                    
-                    await cloudinary.uploader.destroy(fullPublicId);
-                }
-            } catch (deleteError) {
-                console.error("Cloudinary deletion error:", deleteError);
-            }
-        }
-
-        // Point deduction logic
-        const pointsMap = {
-            standard: 10,
-            hazardous: 20,
-            large: 15
-        };
-        const pointsToDeduct = pointsMap[report.reportType] || 10;
-
-        await User.findByIdAndUpdate(report.user, {
-            $inc: { 
-                reportCount: -1, 
-                points: -pointsToDeduct 
-            }
-        });
-
-        // Delete report from DB
-        await report.deleteOne();
-
-        res.json({ message: "Report deleted successfully" });
-    } catch (error) {
-        console.error("Error in delete route:", error);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
 });
 export default router;
