@@ -43,6 +43,11 @@ const reportSchema = new mongoose.Schema({
   photoTimestamp: {
     type: Date,
     required: true
+  },
+   reportType: {
+    type: String,
+    enum: ['standard', 'hazardous', 'large'],
+    default: 'standard'
   }
 }, {
   timestamps: true

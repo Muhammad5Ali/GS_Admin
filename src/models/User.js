@@ -51,11 +51,12 @@ userSchema.methods.comparePassword=async function (userPassword) {
     
     return await bcrypt.compare(userPassword,this.password);
 };
-userSchema.methods.incrementReportCount = async function() {
-  this.reportCount += 1;
-  this.points += 10;  // Award 10 points per report
-  await this.save();
-};
+// To this:
+// userSchema.methods.incrementCounts = async function() {
+//   this.reportCount += 1;
+//   this.points += 10;  // Your point calculation
+//   await this.save();
+// };
 
 userSchema.index({ reportCount: -1, points: -1 });
 const User=mongoose.model("User",userSchema);

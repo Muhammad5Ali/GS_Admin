@@ -1,5 +1,6 @@
 import express from 'express';
 import Report from "../models/Report.js";
+import User from "../models/User.js";
 import cloudinary from '../lib/cloudinary.js';
 import protectRoute from '../middleware/auth.middleware.js';
 
@@ -16,10 +17,9 @@ router.post("/", protectRoute, async (req, res) => {
   try {
     const { title, image, details, address, latitude, longitude, photoTimestamp } = req.body;
      // Add server-side image size validation
-    if (image && image.length > 7 * 1024 * 1024) { // 7MB limit
-      return res.status(413).json({ message: "Image too large (max 7MB)" });
+    if (image && image.length > 5 * 1024 * 1024) { // 5MB limit
+      return res.status(413).json({ message: "Image too large (max 5MB)" });
     }
-
     // Validation
     if (!title || !image || !details || !address || !latitude || !longitude) {
       return res.status(400).json({ message: "All fields are required" });
@@ -57,7 +57,7 @@ router.post("/", protectRoute, async (req, res) => {
         {
           resource_type: "image",
           folder: "reports",
-          quality: "auto:good", // Auto-optimize quality
+          quality: "auto", // Auto-optimize quality
           transformation: [
             { width: 800, height: 600, crop: 'limit' },
             { quality: 'auto:best' } // Balance quality/size
@@ -88,12 +88,29 @@ router.post("/", protectRoute, async (req, res) => {
 
     // Save to database
     const savedReport = await newReport.save();
+
+    // Add point calculation and user update here ▼▼▼
+// Extract report type from request body
+const reportType = req.body.reportType || 'standard'; // Default to 'standard'
+
+const pointsMap = {
+  standard: 10,
+  hazardous: 20,
+  large: 15
+};
+const pointsToAdd = pointsMap[reportType] || 10;
     
     // Update user's report count and points
-    const user = await User.findById(req.user._id);
-    if (user) {
-      await user.incrementReportCount();
+  try {
+  await User.findByIdAndUpdate(req.user._id, {
+    $inc: {   
+      reportCount: 1, 
+      points: pointsToAdd
     }
+  });
+} catch (updateError) {
+  console.error("User update error:", updateError);
+}
     
     res.status(201).json({
       message: "Report created successfully",
@@ -127,7 +144,7 @@ router.get("/",protectRoute,async(req,res)=>{
     //example call from react-native-frontend
     //const response=await fetch("http://localhost:3000/api/reports?page=1&limit=5");
     const page=req.query.page ||1;
-    const limit=req.query.limit ||5;
+    const limit=req.query.limit ||2;
     const skip=(page-1)*limit;
     const reports=await Report.find().sort({createdAt:-1}) //descending order from newest one to  //the older and so on
     .skip(skip)
@@ -181,6 +198,20 @@ router.delete("/:id",protectRoute,async(req,res)=>{
                 
             }
         }
+        // Add before deleting report
+const pointsMap = {
+  standard: 10,
+  hazardous: 20,
+  large: 15
+};
+const pointsToDeduct = pointsMap[report.reportType] || 10;
+
+await User.findByIdAndUpdate(report.user, {
+  $inc: { 
+    reportCount: -1, 
+    points: -pointsToDeduct 
+  }
+});
         //delete the report from db
         await report.deleteOne();
 
