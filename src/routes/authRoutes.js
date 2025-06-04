@@ -61,8 +61,7 @@ res.status(201).json({
     id: user._id,
     username:user.username,
     email:user.email,
-    profileImage:user.profileImage,
-    createdAt:user.createdAt,
+    profileImage:user.profileImage
  },
 });
     } catch (error) { 
@@ -91,7 +90,6 @@ router.post("/login",async (req,res)=>{
             username:user.username,
             email:user.email,
             profileImage:user.profileImage,
-            createdAt:user.createdAt,
           },
         });
         
