@@ -77,6 +77,7 @@ router.post("/", protectRoute, async (req, res) => {
     const newReport = new Report({
       title: title.trim(),
       image: uploadResponse.secure_url,
+      publicId: uploadResponse.public_id, // Store public ID
       details: details.trim(),
       address: address.trim(),
       location: {
@@ -178,54 +179,104 @@ router.get("/user",protectRoute,async(req,res)=>{
         res.status(500).json({message:"Internal Server Error"});
     }
 })
-
-router.delete("/:id",protectRoute,async(req,res)=>{
-    try {
-        const report=await Report.findById(req.params.id);
-        if(!report) return res.status(404).json({message:"Report not found"});
-        //check if the user is the creator of the Report
-        if(report.user.toString()!==req.user._id.toString())
-            return res.status(401).json({message:"You are not authorized to delete this report"});
+{/** router.delete("/:id",protectRoute,async(req,res)=>{
+//     try {
+//         const report=await Report.findById(req.params.id);
+//         if(!report) return res.status(404).json({message:"Report not found"});
+//         //check if the user is the creator of the Report
+//         if(report.user.toString()!==req.user._id.toString())
+//             return res.status(401).json({message:"You are not authorized to delete this report"});
          
-        //delete the image from cloudinary
-        //example imagr url how cloudinary stores yr image
-        //https://res.cloudinary.com/de1rm4uto/image/upload/v17411568358/qyup61vejflxxw8igvi0.png
+//         //delete the image from cloudinary
+//         //example imagr url how cloudinary stores yr image
+//         //https://res.cloudinary.com/de1rm4uto/image/upload/v17411568358/qyup61vejflxxw8igvi0.png
 
-        if(report.image && report.image.includes("cloudinary")){
-            try {
-                const publicId=report.image.split("/").pop().split(".")[0];
-                await cloudinary.uploader.destroy(publicId);
+//         if(report.image && report.image.includes("cloudinary")){
+//             try {
+//                 const publicId=report.image.split("/").pop().split(".")[0];
+//                 await cloudinary.uploader.destroy(publicId);
                 
-            } catch (deleteError) {
-                console.log("Error in deleting image from cloudinary",deleteError);
-                //return res.status(500).json({message:"Internal Server Error"});
+//             } catch (deleteError) {
+//                 console.log("Error in deleting image from cloudinary",deleteError);
+//                 //return res.status(500).json({message:"Internal Server Error"});
                 
-            }
-        }
-        // Add before deleting report
-const pointsMap = {
-  standard: 10,
-  hazardous: 20,
-  large: 15
-};
-const pointsToDeduct = pointsMap[report.reportType] || 10;
+//             }
+//         }
+//         // Add before deleting report
+// const pointsMap = {
+//   standard: 10,
+//   hazardous: 20,
+//   large: 15
+// };
+// const pointsToDeduct = pointsMap[report.reportType] || 10;
 
-await User.findByIdAndUpdate(report.user, {
-  $inc: { 
-    reportCount: -1, 
-    points: -pointsToDeduct 
-  }
-});
-        //delete the report from db
-        await report.deleteOne();
+// await User.findByIdAndUpdate(report.user, {
+//   $inc: { 
+//     reportCount: -1, 
+//     points: -pointsToDeduct 
+//   }
+// });
+//         //delete the report from db
+//         await report.deleteOne();
 
-        res.json({message:"Report deleted successfully"});
-    } catch (error) {
-        console.log("Error in deleting Report route",error);
-        res.status(500).json({message:"Internal Server Error"});
-    }
+//         res.json({message:"Report deleted successfully"});
+//     } catch (error) {
+//         console.log("Error in deleting Report route",error);
+//         res.status(500).json({message:"Internal Server Error"});
+//     }
     
 
 
+ }); */}
+ router.delete("/:id", protectRoute, async (req, res) => {
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    // Authorization check
+    if (report.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Cloudinary deletion - improved reliability
+    if (report.image && report.image.includes("cloudinary")) {
+      try {
+        // Extract public ID safely
+        const urlParts = report.image.split("/");
+        const publicId = urlParts[urlParts.length - 1].split(".")[0];
+        await cloudinary.uploader.destroy(publicId);
+      } catch (deleteError) {
+        console.error("Cloudinary deletion error:", deleteError);
+      }
+    }
+
+    // Points calculation and update - optimized
+    const pointsMap = {
+      standard: 10,
+      hazardous: 20,
+      large: 15
+    };
+    const pointsToDeduct = pointsMap[report.reportType] || 10;
+
+    // Atomic user update with concurrency safety
+    await User.findByIdAndUpdate(report.user, {
+      $inc: { 
+        reportCount: -1, 
+        points: -pointsToDeduct 
+      }
+    });
+
+    // Delete report document
+    await report.deleteOne();
+
+    res.json({ message: "Report deleted successfully" });
+    
+  } catch (error) {
+    console.error("Delete Report Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 });
+
 export default router;

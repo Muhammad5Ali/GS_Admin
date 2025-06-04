@@ -10,10 +10,10 @@
       type: String,
       required: true
     },
-    // publicId: {
-    //   type: String,
-    //   default: "" // Set default as empty string
-    // },
+     publicId: {
+    type: String,
+    required: true // Make this required
+  },
     details: {
       type: String,
       required: true,
