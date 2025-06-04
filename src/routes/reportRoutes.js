@@ -167,7 +167,10 @@ router.get("/",protectRoute,async(req,res)=>{
 //get reports that are being reported by the logged in user 
 router.get("/user",protectRoute,async(req,res)=>{
     try {
-        const reports=await Report.find({user:req.user._id}).sort({createdAt:-1});
+      //  const reports=await Report.find({user:req.user._id}).sort({createdAt:-1});
+      const reports=await Report.find({user:req.user._id})
+  .sort({createdAt:-1})
+  .populate("user","username profileImage");
         res.json(reports);
     } catch (error) {
         console.log("Error in getting recommended books",error);
