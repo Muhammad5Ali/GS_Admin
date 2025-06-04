@@ -15,7 +15,7 @@ router.use((req, res, next) => {
 
 router.post("/", protectRoute, async (req, res) => {
   try {
-    const { title, image, details, address, latitude, longitude, photoTimestamp } = req.body;
+    const { title, image, details, address, latitude, longitude, photoTimestamp, reportType } = req.body;
      // Add server-side image size validation
     if (image && image.length > 5 * 1024 * 1024) { // 5MB limit
       return res.status(413).json({ message: "Image too large (max 5MB)" });
@@ -72,7 +72,8 @@ router.post("/", protectRoute, async (req, res) => {
         error: uploadError.message 
       });
     }
-
+   // Extract report type from request body
+ const finalReportType = reportType || 'standard'; // Default to 'standard'
     // Create report
     const newReport = new Report({
       title: title.trim(),
@@ -80,6 +81,7 @@ router.post("/", protectRoute, async (req, res) => {
       publicId: uploadResponse.public_id, // Store public ID
       details: details.trim(),
       address: address.trim(),
+      reportType: finalReportType,
       location: {
         type: "Point",
         coordinates: [parseFloat(longitude), parseFloat(latitude)]
@@ -91,16 +93,12 @@ router.post("/", protectRoute, async (req, res) => {
     // Save to database
     const savedReport = await newReport.save();
 
-    // Add point calculation and user update here ▼▼▼
-// Extract report type from request body
-const reportType = req.body.reportType || 'standard'; // Default to 'standard'
-
 const pointsMap = {
   standard: 10,
   hazardous: 20,
   large: 15
 };
-const pointsToAdd = pointsMap[reportType] || 10;
+const pointsToAdd = pointsMap[finalReportType] || 10;
     
     // Update user's report count and points
   try {
@@ -228,49 +226,48 @@ router.get("/user",protectRoute,async(req,res)=>{
 
 
  }); */}
- router.delete("/:id", protectRoute, async (req, res) => {
+router.delete("/:id", protectRoute, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
     if (!report) {
       return res.status(404).json({ message: "Report not found" });
     }
 
-    // Authorization check
+    // Authorization
     if (report.user.toString() !== req.user._id.toString()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Cloudinary deletion - improved reliability
-    if (report.image && report.image.includes("cloudinary")) {
+    // Cloudinary deletion using stored publicId
+    if (report.publicId) {
       try {
-        // Extract public ID safely
-        const urlParts = report.image.split("/");
-        const publicId = urlParts[urlParts.length - 1].split(".")[0];
-        await cloudinary.uploader.destroy(publicId);
+        await cloudinary.uploader.destroy(report.publicId);
       } catch (deleteError) {
         console.error("Cloudinary deletion error:", deleteError);
       }
     }
 
-    // Points calculation and update - optimized
+    // Points deduction - ensure reportType exists
     const pointsMap = {
       standard: 10,
       hazardous: 20,
       large: 15
     };
-    const pointsToDeduct = pointsMap[report.reportType] || 10;
+    
+    // Handle missing reportType gracefully
+    const pointsToDeduct = report.reportType 
+      ? pointsMap[report.reportType] || 10 
+      : 10;
 
-    // Atomic user update with concurrency safety
-    await User.findByIdAndUpdate(report.user, {
+    // Update current user (not report user)
+    await User.findByIdAndUpdate(req.user._id, {
       $inc: { 
         reportCount: -1, 
         points: -pointsToDeduct 
       }
     });
 
-    // Delete report document
     await report.deleteOne();
-
     res.json({ message: "Report deleted successfully" });
     
   } catch (error) {
