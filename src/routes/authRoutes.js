@@ -32,7 +32,9 @@ router.post("/register",async (req,res)=>{
             return res.status(400).json({ message: "Email already exists.."});
         }
         //get random number
-const profileImage = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+   {/*const profileImage = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;*/} 
+//  in register route
+const profileImage = `https://api.dicebear.com/7.x/avataaars/png?seed=${username}`;
 
 
 

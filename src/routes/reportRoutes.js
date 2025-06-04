@@ -58,6 +58,7 @@ router.post("/", protectRoute, async (req, res) => {
           resource_type: "image",
           folder: "reports",
           quality: "auto", // Auto-optimize quality
+          format: 'jpg',
           transformation: [
             { width: 800, height: 600, crop: 'limit' },
             { quality: 'auto:best' } // Balance quality/size
