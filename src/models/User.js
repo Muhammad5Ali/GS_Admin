@@ -21,6 +21,14 @@ const userSchema=new mongoose.Schema({
         type:String,    
         default:""
     },
+    reportCount: {
+    type: Number,
+    default: 0
+  },
+  points: {
+    type: Number,
+    default: 0
+  },
 },{
     timestamps:true
 });
@@ -43,7 +51,14 @@ userSchema.methods.comparePassword=async function (userPassword) {
     
     return await bcrypt.compare(userPassword,this.password);
 };
+// To this:
+// userSchema.methods.incrementCounts = async function() {
+//   this.reportCount += 1;
+//   this.points += 10;  // Your point calculation
+//   await this.save();
+// };
 
+userSchema.index({ reportCount: -1, points: -1 });
 const User=mongoose.model("User",userSchema);
 
 export default User;
