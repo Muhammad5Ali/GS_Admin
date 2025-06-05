@@ -7,27 +7,11 @@ const router=express.Router();
 const generateToken=(userId)=>{
     return jwt.sign({userId},process.env.JWT_SECRET,{expiresIn:"15d"})
 }
-// Adding this function to generate avatar URL
-// Improving the generateAvatar function
-const generateAvatar = (username, gender) => {
-  const baseUrl = "https://api.dicebear.com/7.x/avataaars/png";
-  const seed = encodeURIComponent(username);
-  const baseParams = `seed=${seed}&style=circle&backgroundColor=65c9ff,b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
-  
-  switch(gender) {
-    case 'male':
-      return `${baseUrl}?${baseParams}&accessories=round&facialHair=mediumBeard`;
-    case 'female':
-      return `${baseUrl}?${baseParams}&accessories=prescription02&facialHair=none`;
-    default: // other
-      return `${baseUrl}?${baseParams}&accessories=shades&facialHair=shadow`;
-  }
-};
 
 router.post("/register",async (req,res)=>{
     try {
           //checking all the fields
-  const{email, username,password,gender}=req.body;
+  const{email, username,password}=req.body;
         if(!username||!email ||!password){
             return res.status(400).json({message:"All of the fields are required!!"})
         }
@@ -47,14 +31,10 @@ router.post("/register",async (req,res)=>{
         if(existingEmail){
             return res.status(400).json({ message: "Email already exists.."});
         }
-        
         //get random number
-   {/*const profileImage = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;*/} 
+{/*const profileImage = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;*/} 
 //  in register route
-// const profileImage = `https://api.dicebear.com/7.x/avataaars/png?seed=${username}`;
-
-// Generate gender-specific avatar
-    const avatarUrl = generateAvatar(username, gender);
+const profileImage = `https://api.dicebear.com/7.x/avataaars/png?seed=${username}`;
 
 
 
@@ -63,8 +43,7 @@ const user=new User({
   email,
   username,
   password,
-//   profileImage,
-    profileImage: avatarUrl,
+  profileImage,
 });
 
 await user.save();

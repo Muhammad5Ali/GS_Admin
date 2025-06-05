@@ -17,12 +17,12 @@ const userSchema=new mongoose.Schema({
         required:true,
         minlength:6
     },
-     gender: {
-    type: String,
-    enum: ['male', 'female', 'other'],
-    required: true,
-    default: 'other'
-  },
+//      gender: {
+//     type: String,
+//     enum: ['male', 'female', 'other'],
+//     required: true,
+//     default: 'other'
+//   },
     profileImage:{
         type:String,    
         default:""
