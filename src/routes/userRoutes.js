@@ -4,14 +4,22 @@ import User from '../models/User.js';
 const router = express.Router();
 
 // GET top reporters
+// In userRoutes.js
 router.get('/top-reporters', async (req, res) => {
   try {
     const topReporters = await User.find()
       .sort({ reportCount: -1, points: -1 })
       .limit(10)
-      .select('username profileImage reportCount points _id');
+      .select('username profileImage reportCount points _id')
+      .lean(); // Convert to plain JS objects
 
-    res.json(topReporters);
+    // Add rank position to each reporter
+    const reportersWithRank = topReporters.map((reporter, index) => ({
+      ...reporter,
+      rank: index + 1
+    }));
+
+    res.json(reportersWithRank);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
