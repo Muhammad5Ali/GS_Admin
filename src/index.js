@@ -2,15 +2,18 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import job from "./lib/cron.js";
+import rateLimit from "express-rate-limit";
 
 import authRoutes from "./routes/authRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import { connectDB } from "./lib/db.js";
+import classifyRouter from "./routes/classify.js";
 
 const app=express();
 
 const PORT=process.env.PORT || 3000;
+
 job.start(); //start the cron job
 //middleware allows u to access the email, name etc, allow to parse json data
 //app.use(express.json());
@@ -36,11 +39,17 @@ app.use(cors({
   exposedHeaders: ['Authorization'],
   credentials: true
 }));
+const classifyLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 8, // Limit each IP to 8 requests per windowMs
+  message: 'Too many classification requests, please try again later'
+});
 
 app.use("/api/auth",authRoutes);
 app.use("/api/report",reportRoutes);
 // New user routes
 app.use("/api/users", userRoutes);
+app.use('/classify', classifyLimiter, classifyRouter);
 
 app.listen(PORT,()=>{
     console.log(`Server is listening on port:${PORT}`);;
