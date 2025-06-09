@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 
 //const HF_API_URL = 'https://api-inference.huggingface.co/models/avatar77/wasteclassification';
 const HF_API_URL = 'https://api-inference.huggingface.co/models/avatar77/wasteclassification';
-const DEFAULT_TIMEOUT = 15000;
+const DEFAULT_TIMEOUT = 20000; // Increased to 20s for cold starts
 
 /**
  * Classifies a base64-encoded image using a Hugging Face model.
@@ -26,15 +26,26 @@ export default async function classifyImage(imageBase64) {
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
 
   try {
+       const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
     const res = await fetch(HF_API_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${process.env.HUGGINGFACE_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ inputs: imageBase64 }),
+     body: JSON.stringify({ 
+        inputs: cleanBase64, // Use clean base64 without header
+        options: { wait_for_model: true } // Critical for cold starts
+      }),
       signal: controller.signal
     });
+      // Handle model loading explicitly
+    if (res.status === 503) {
+      const errorData = await res.json();
+      if (errorData.error && /loading|starting/i.test(errorData.error)) {
+        throw new Error('MODEL_LOADING');
+      }
+    }
 
     // Handle 503 model loading message
     if (res.status === 503) {

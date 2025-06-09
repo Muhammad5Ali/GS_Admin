@@ -56,6 +56,12 @@ router.post("/", protectRoute, async (req, res) => {
     } catch (error) {
       console.error("Classification Error:", error.message);
       const errorCode = error.message.split(':')[0];
+        if (error.message.includes('Failed to fetch')) {
+    return res.status(502).json({
+      message: 'Network error connecting to AI service',
+      code: 'NETWORK_ERROR'
+    });
+  }
 
       // Handle specific error codes
       switch (errorCode) {
