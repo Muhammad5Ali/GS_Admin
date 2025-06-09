@@ -1,32 +1,31 @@
 // services/classificationService.js
 import fetch from 'node-fetch';
 
+//const HF_API_URL = 'https://api-inference.huggingface.co/models/avatar77/wasteclassification';
 const HF_API_URL = 'https://api-inference.huggingface.co/models/avatar77/wasteclassification';
-const DEFAULT_TIMEOUT = 15000;  // give a bit more time for model warm-up
+const DEFAULT_TIMEOUT = 15000;
 
 /**
- * Classifies a base64 image using Hugging Face Inference API
- * @param {string} imageBase64 - Base64-encoded image (no data: prefix)
- * @returns {Promise<{isWaste: boolean, confidence: number, label: string}>}
+ * Classifies a base64-encoded image using a Hugging Face model.
+ * @param {string} imageBase64 - The image in base64 encoding.
+ * @returns {Promise<{ isWaste: boolean, label: string, confidence: number }>}
  */
 export default async function classifyImage(imageBase64) {
-  // 1) Validate base64 format
+  // Validate base64 format
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64)) {
     throw new Error('INVALID_BASE64');
   }
 
-  // 2) Check size (5MB max)
+  // Check size limit (5MB)
   const byteLength = Buffer.byteLength(imageBase64, 'base64');
   if (byteLength > 5 * 1024 * 1024) {
     throw new Error('IMAGE_TOO_LARGE');
   }
 
-  // 3) Set up abort & timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
 
   try {
-    // 4) Call the HF Inference API
     const res = await fetch(HF_API_URL, {
       method: 'POST',
       headers: {
@@ -37,45 +36,60 @@ export default async function classifyImage(imageBase64) {
       signal: controller.signal
     });
 
-    // 5) Handle non-200
+    // Handle 503 model loading message
+    if (res.status === 503) {
+      const errorData = await res.json();
+      if (errorData.error && /loading/i.test(errorData.error)) {
+        throw new Error('MODEL_LOADING');
+      }
+    }
+
+    // Handle other non-OK responses
     if (!res.ok) {
       const txt = await res.text();
-      console.error(`HF Inference API returned ${res.status}:`, txt);
+      console.error(`HF API Error ${res.status}:`, txt);
+
       const code = res.status === 503 ? 'MODEL_LOADING'
                  : res.status === 401 ? 'UNAUTHORIZED'
                  : 'HF_SERVICE_ERROR';
       throw new Error(`${code}:${res.status}`);
     }
 
-    // 6) Parse JSON
+    // Parse and validate response
     const json = await res.json();
-    // HF might return an array of labels+scores, or an object { label, score }
     const { label, score } = Array.isArray(json)
       ? json[0]
       : { label: json.label, score: json.score || json[0]?.score };
 
     if (!label) {
-      console.error('Invalid HF response shape:', json);
+      console.error('Invalid HF response:', json);
       throw new Error('INVALID_RESPONSE');
     }
 
-    // 7) Return normalized
+    const confidence = parseFloat(score) || 0;
+    console.log(`Classification: ${label} (${confidence.toFixed(2)})`);
+
     return {
       isWaste: label === 'Waste',
       label,
-      confidence: parseFloat(score) || 0
+      confidence
     };
 
   } catch (err) {
-    // 8) Map certain errors to actionable messages
     if (err.name === 'AbortError') {
       throw new Error('TIMEOUT');
     }
-    // propagate our own codes
-    if (/MODEL_LOADING|UNAUTHORIZED|HF_SERVICE_ERROR|INVALID_RESPONSE|IMAGE_TOO_LARGE|INVALID_BASE64|TIMEOUT/.test(err.message)) {
+
+    const knownErrors = [
+      'MODEL_LOADING', 'UNAUTHORIZED', 'HF_SERVICE_ERROR',
+      'INVALID_RESPONSE', 'IMAGE_TOO_LARGE', 'INVALID_BASE64', 'TIMEOUT'
+    ];
+
+    if (knownErrors.some(e => err.message.includes(e))) {
       throw err;
     }
-    console.error('Unexpected classification error:', err);
+
+    console.error('Classification Error:', err);
     throw new Error('CLASSIFICATION_FAILED');
   } finally {
     clearTimeout(timeoutId);
