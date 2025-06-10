@@ -2,7 +2,7 @@
 import fetch from 'node-fetch';
 import https from 'https';
 
-const GRADIO_API_URL = 'https://avatar77-wasteclassification.hf.space/apicurl -X POST http://localhost:3000/api/classify/status';
+const GRADIO_API_URL = 'https://avatar77-wasteclassification.hf.space/api';
 const DEFAULT_TIMEOUT = 45000; // 45 seconds for Gradio cold starts
 
 // Replace the entire classifyImage function with this:

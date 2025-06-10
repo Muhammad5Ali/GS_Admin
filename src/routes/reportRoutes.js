@@ -14,110 +14,112 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post("/", protectRoute, async (req, res) => {
+router.post('/', protectRoute, async (req, res) => {
   try {
-    const { title, image, details, address, latitude, longitude, photoTimestamp, reportType } = req.body;
-    
+    const {
+      title,
+      image,
+      details,
+      address,
+      latitude,
+      longitude,
+      photoTimestamp,
+      reportType,
+      forceSubmit
+    } = req.body;
+
     // Server-side validation
     if (image && image.length > 5 * 1024 * 1024) {
-      return res.status(413).json({ 
-        message: "Image too large (max 5MB)",
-        code: "IMAGE_TOO_LARGE"
+      return res.status(413).json({
+        message: 'Image too large (max 5MB)',
+        code: 'IMAGE_TOO_LARGE'
       });
     }
-    
+
     const missingFields = [];
     if (!title) missingFields.push('title');
     if (!image) missingFields.push('image');
     if (!details) missingFields.push('details');
     if (!address) missingFields.push('address');
     if (!latitude || !longitude) missingFields.push('location');
-    
+
     if (missingFields.length > 0) {
       return res.status(400).json({
         message: `Missing required fields: ${missingFields.join(', ')}`,
-        code: "MISSING_FIELDS",
+        code: 'MISSING_FIELDS',
         missingFields
       });
     }
 
     // Base64 validation
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(image)) {
-      return res.status(400).json({ 
-        message: "Invalid image format",
-        code: "INVALID_IMAGE_FORMAT"
-      });
-    }
-
-    // Classify image using the service
-    let classification;
-    try {
-      classification = await classifyImage(image);
-       // Handle classification result
-  if (!classification.isWaste) {
-    return res.status(400).json({ 
-      message: 'Image is not of waste',
-      classification,
-      code: 'NOT_WASTE'
-    });
-  }
-    } catch (error) {
-      console.error("Classification Error:", error.message);
-       if (error.message.includes('HF_API_ERROR')) {
-    return res.status(503).json({
-      message: 'AI service unavailable',
-      code: 'SERVICE_UNAVAILABLE'
-    });
-  }
-      const errorCode = error.message.split(':')[0];
-        if (error.message.includes('Failed to fetch')) {
-    return res.status(502).json({
-      message: 'Network error connecting to AI service',
-      code: 'NETWORK_ERROR'
-    });
-  }
-
-      // Handle specific error codes
-      switch (errorCode) {
-        case 'MODEL_LOADING':
-          return res.status(503).json({
-            message: 'Our AI model is warming up. Please try again in 20 seconds.',
-            code: 'MODEL_LOADING'
-          });
-        case 'TIMEOUT':
-          return res.status(504).json({
-            message: 'Image verification timed out. Please try again.',
-            code: 'TIMEOUT'
-          });
-        case 'UNAUTHORIZED':
-          return res.status(401).json({
-            message: 'Authentication failed with AI service',
-            code: 'HF_UNAUTHORIZED'
-          });
-        default:
-          return res.status(502).json({
-            message: 'Image verification service error',
-            code: 'SERVICE_UNAVAILABLE',
-            error: error.message
-          });
-      }
-    }
-
-    // New low-confidence check
-    if (classification.label === "Waste" && classification.confidence < 0.7) {
       return res.status(400).json({
-        message: 'Low confidence in waste detection',
-        classification,
-        code: 'LOW_CONFIDENCE'
+        message: 'Invalid image format',
+        code: 'INVALID_IMAGE_FORMAT'
       });
     }
 
-    if (classification.label !== "Waste") {
-      return res.status(400).json({ 
-        message: 'Image is not of waste...',
-        classification,
-        code: 'NOT_WASTE'
-      });
+    let classification;
+    // Only run AI check if user hasn't forced the submit
+    if (!forceSubmit) {
+      try {
+        classification = await classifyImage(image);
+
+        // Reject if not waste or low confidence
+        if (!classification.isWaste || classification.confidence < 0.7) {
+          const code = !classification.isWaste ? 'NOT_WASTE' : 'LOW_CONFIDENCE';
+          const message = !classification.isWaste
+            ? 'Image is not of waste'
+            : 'Low confidence in waste detection';
+
+          return res.status(400).json({
+            message,
+            classification,
+            code
+          });
+        }
+      } catch (error) {
+        console.error('Classification Error:', error.message);
+        if (error.message.includes('HF_API_ERROR')) {
+          return res.status(503).json({
+            message: 'AI service unavailable',
+            code: 'SERVICE_UNAVAILABLE'
+          });
+        }
+
+        if (error.message.includes('Failed to fetch')) {
+          return res.status(502).json({
+            message: 'Network error connecting to AI service',
+            code: 'NETWORK_ERROR'
+          });
+        }
+
+        const errorCode = error.message.split(':')[0];
+        switch (errorCode) {
+          case 'MODEL_LOADING':
+            return res.status(503).json({
+              message:
+                'Our AI model is warming up. Please try again in 20 seconds.',
+              code: 'MODEL_LOADING'
+            });
+          case 'TIMEOUT':
+            return res.status(504).json({
+              message: 'Image verification timed out. Please try again.',
+              code: 'TIMEOUT'
+            });
+          case 'UNAUTHORIZED':
+            return res.status(401).json({
+              message: 'Authentication failed with AI service',
+              code: 'HF_UNAUTHORIZED'
+            });
+          default:
+            return res.status(502).json({
+              message: 'Image verification service error',
+              code: 'SERVICE_UNAVAILABLE',
+              error: error.message
+            });
+        }
+      }
     }
 
     // Cloudinary upload with timeout
@@ -126,41 +128,33 @@ router.post("/", protectRoute, async (req, res) => {
       const cloudinaryPromise = cloudinary.uploader.upload(
         `data:image/jpeg;base64,${image}`,
         {
-          resource_type: "image",
-          folder: "reports",
-          quality: "auto",
+          resource_type: 'image',
+          folder: 'reports',
+          quality: 'auto',
           format: 'jpg',
-          transformation: [
-            { width: 800, crop: 'limit' }, 
-            { quality: 'auto:good' }
-          ]
+          transformation: [{ width: 800, crop: 'limit' }, { quality: 'auto:good' }]
         }
       );
-
-      const uploadTimeout = new Promise((_, reject) => 
+      const uploadTimeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('CLOUDINARY_TIMEOUT')), 15000)
       );
-
       uploadResponse = await Promise.race([cloudinaryPromise, uploadTimeout]);
-
     } catch (uploadError) {
-      console.error("Cloudinary Upload Error:", uploadError);
-
+      console.error('Cloudinary Upload Error:', uploadError);
       if (uploadError.message === 'CLOUDINARY_TIMEOUT') {
         return res.status(504).json({
-          message: "Image upload timed out",
-          code: "CLOUDINARY_TIMEOUT"
+          message: 'Image upload timed out',
+          code: 'CLOUDINARY_TIMEOUT'
         });
       }
-
-      return res.status(500).json({ 
-        message: "Image upload failed",
+      return res.status(500).json({
+        message: 'Image upload failed',
         error: uploadError.message,
-        code: "CLOUDINARY_ERROR"
+        code: 'CLOUDINARY_ERROR'
       });
     }
 
-    // Create report
+    // Create report in DB
     const finalReportType = reportType || 'standard';
     const newReport = new Report({
       title: title.trim(),
@@ -170,51 +164,47 @@ router.post("/", protectRoute, async (req, res) => {
       address: address.trim(),
       reportType: finalReportType,
       location: {
-        type: "Point",
+        type: 'Point',
         coordinates: [parseFloat(longitude), parseFloat(latitude)]
       },
       photoTimestamp: photoTimestamp ? new Date(photoTimestamp) : new Date(),
       user: req.user._id
     });
-
     const savedReport = await newReport.save();
 
     // Update user points
     const pointsMap = { standard: 10, hazardous: 20, large: 15 };
     const pointsToAdd = pointsMap[finalReportType] || 10;
-
     try {
       await User.findByIdAndUpdate(req.user._id, {
         $inc: { reportCount: 1, points: pointsToAdd }
       });
     } catch (updateError) {
-      console.error("User update error:", updateError);
+      console.error('User update error:', updateError);
     }
 
     res.status(201).json({
-      message: "Report created successfully",
+      message: 'Report created successfully',
       report: savedReport,
       pointsEarned: pointsToAdd
     });
-
   } catch (error) {
-    console.error("Report Creation Error:", error);
-
+    console.error('Report Creation Error:', error);
     if (error.name === 'ValidationError') {
-      return res.status(400).json({ 
-        message: "Validation Error",
+      return res.status(400).json({
+        message: 'Validation Error',
         error: error.message,
-        code: "VALIDATION_ERROR"
+        code: 'VALIDATION_ERROR'
       });
     }
-
-    res.status(500).json({ 
-      message: "Internal server error",
+    res.status(500).json({
+      message: 'Internal server error',
       error: error.message,
-      code: "INTERNAL_SERVER_ERROR"
+      code: 'INTERNAL_SERVER_ERROR'
     });
   }
 });
+
 
 // Add this temporary route to test classification
 // routes/reportRoutes.js
