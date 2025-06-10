@@ -1,70 +1,99 @@
 // services/classificationService.js
 import fetch from 'node-fetch';
 
-// Gradio two-step predict endpoint
-const GRADIO_API_BASE = 'https://avatar77-wasteclassification.hf.space/gradio_api/call/predict';
-const DEFAULT_TIMEOUT = 60000; // 60 seconds to allow cold starts
+const GRADIO_API_BASE = 'https://avatar77-wasteclassification.hf.space/api';  // ✅ Correct base URL
+const DEFAULT_TIMEOUT = 60000; // 60s for cold starts
 
 /**
- * Classify an image using the Hugging Face Gradio API.
- * Performs a POST to initiate prediction and a GET to fetch the results using the event_id.
- * @param {string} imageBase64 - Raw base64-encoded image data (no data URI prefix)
- * @returns {Promise<{ isWaste: boolean; label: string; confidence: number }>} Classification result
+ * Low-level helper: POST to /predict then GET /predict/{event_id}
+ * with full debug logging of both raw responses.
+ *
+ * @param {string} rawBase64  – the pure base64 string (no data URI prefix)
+ * @returns {Promise<any>}    – the full JSON payload from Gradio
+ */
+async function callGradioAPI(rawBase64) {
+  // 1️⃣ Kick off the prediction
+  const postUrl = `${GRADIO_API_BASE}/predict`;
+  console.log(`Gradio POST → ${postUrl}`);
+  const postResp = await fetch(postUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      data: [
+        {
+          name: 'upload.jpg',
+          data: [rawBase64]
+        }
+      ]
+    }),
+    timeout: DEFAULT_TIMEOUT
+  });
+
+  if (!postResp.ok) {
+    const body = await postResp.text();
+    console.error('Gradio POST failed:', postResp.status, body);
+    throw new Error(`HF_API_POST_ERROR: ${postResp.status}`);
+  }
+
+  const postJson = await postResp.json();
+  console.log('Gradio POST response:', postJson);
+
+  const eventId = postJson.event_id;
+  if (!eventId) {
+    console.error('No event_id in POST response:', postJson);
+    throw new Error('HF_API_POST_ERROR: Missing event_id');
+  }
+
+  // 2️⃣ Fetch the prediction result
+  const getUrl = `${postUrl}/${eventId}`;
+  console.log(`Gradio GET → ${getUrl}`);
+  const getResp = await fetch(getUrl, { timeout: DEFAULT_TIMEOUT });
+
+  if (!getResp.ok) {
+    const body = await getResp.text();
+    console.error('Gradio GET failed:', getResp.status, body);
+    throw new Error(`HF_API_GET_ERROR: ${getResp.status}`);
+  }
+
+  const getJson = await getResp.json();
+  console.log('Gradio GET response:', getJson);
+  return getJson;
+}
+
+/**
+ * Public classifier: validates your input, calls Gradio, and
+ * returns a normalized `{ isWaste, label, confidence }`.
+ *
+ * @param {string} imageBase64  – a data URI or raw base64 string
+ * @returns {Promise<{isWaste:boolean,label:string,confidence:number}>}
  */
 export default async function classifyImage(imageBase64) {
   try {
-    // 1️⃣ Initiate prediction: POST returns JSON with { event_id }
-    const postResp = await fetch(GRADIO_API_BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: [
-          {
-            name: 'upload.jpg',      // Placeholder filename
-            data: imageBase64        // Raw base64 string
-          }
-        ]
-      }),
-      timeout: DEFAULT_TIMEOUT,
-    });
-
-    if (!postResp.ok) {
-      const errBody = await postResp.text();
-      console.error('HF POST error:', postResp.status, errBody);
-      throw new Error(`HF_API_POST_ERROR: Status ${postResp.status}`);
+    // Normalize: strip “data:image/...;base64,” if present
+    let rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    if (!rawBase64) {
+      throw new Error('INVALID_BASE64: missing data.');
     }
 
-    const postJson = await postResp.json();
-    const eventId = postJson.event_id;
-    if (!eventId) {
-      console.error('HF POST no event_id:', postJson);
-      throw new Error('HF_API_POST_ERROR: No event_id in response');
+    // Call the Gradio API
+    const resultJson = await callGradioAPI(rawBase64);
+
+    // Validate structure
+    if (!Array.isArray(resultJson.data) || resultJson.data.length === 0) {
+      console.error('Invalid Gradio data:', resultJson);
+      throw new Error('INVALID_RESPONSE');
     }
 
-    // 2️⃣ Fetch prediction result: GET with event_id
-    const getUrl = `${GRADIO_API_BASE}/${eventId}`;
-    const getResp = await fetch(getUrl, { timeout: DEFAULT_TIMEOUT });
-    if (!getResp.ok) {
-      const errBody = await getResp.text();
-      console.error('HF GET error:', getResp.status, errBody);
-      throw new Error(`HF_API_GET_ERROR: Status ${getResp.status}`);
-    }
-
-    const resultJson = await getResp.json();
-    if (!resultJson?.data || !Array.isArray(resultJson.data) || resultJson.data.length === 0) {
-      console.error('HF GET invalid format:', resultJson);
-      throw new Error('HF_API_GET_ERROR: Invalid result format');
-    }
-
-    const [label, confidence] = resultJson.data[0];
+    // After receiving resultJson:
+const [label, confidence] = resultJson.data[0]; // ✅ Ensure it's an array
     return {
       isWaste: String(label).toLowerCase() === 'waste',
       label: String(label),
-      confidence: parseFloat(confidence),
+      confidence: parseFloat(confidence)
     };
 
-  } catch (error) {
-    console.error('Classification failed:', error.message || error);
-    throw new Error('SERVICE_DOWN: Waste verification service unavailable');
+  } catch (err) {
+    console.error('Classification failed:', err.message || err);
+    throw new Error('SERVICE_DOWN: Waste verification unavailable');
   }
 }
