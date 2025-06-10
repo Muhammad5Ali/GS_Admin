@@ -66,18 +66,18 @@ router.post('/', protectRoute, async (req, res) => {
         classification = await classifyImage(image);
 
         // Reject if not waste or low confidence
-        if (!classification.isWaste || classification.confidence < 0.7) {
-          const code = !classification.isWaste ? 'NOT_WASTE' : 'LOW_CONFIDENCE';
-          const message = !classification.isWaste
-            ? 'Image is not of waste'
-            : 'Low confidence in waste detection';
-
-          return res.status(400).json({
-            message,
-            classification,
-            code
-          });
-        }
+       if (!classification.isWaste || classification.confidence < 0.85) {
+  const code = !classification.isWaste ? 'NOT_WASTE' : 'LOW_CONFIDENCE';
+  const message = !classification.isWaste 
+    ? 'Image does not show recognizable waste'
+    : 'Low confidence in waste detection';
+    
+  return res.status(400).json({
+    message,
+    classification,
+    code
+  });
+}
       } catch (error) {
         console.error('Classification Error:', error.message);
         if (error.message.includes('HF_API_ERROR')) {
