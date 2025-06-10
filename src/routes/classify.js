@@ -20,7 +20,30 @@ const classifyLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
-
+// Add health check endpoint
+router.get('/health', async (req, res) => {
+  try {
+    const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    
+    // Timeout after 10 seconds
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 10000);
+    
+    const result = await classifyImage(testImage, controller.signal);
+    
+    res.json({
+      status: 'operational',
+      responseTime: `${Date.now() - start}ms`,
+      gradioWorking: true
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'degraded',
+      error: error.message,
+      gradioWorking: false
+    });
+  }
+});
 router.post('/', protectRoute, classifyLimiter, async (req, res) => {
   try {
     const { image } = req.body;
@@ -37,15 +60,17 @@ router.post('/', protectRoute, classifyLimiter, async (req, res) => {
   } catch (error) {
     // Map errors to appropriate HTTP responses
     const errorCode = error.message.split(':')[0];
-    const errorMap = {
-      'INVALID_BASE64': [400, 'Invalid base64 image format'],
-      'IMAGE_TOO_LARGE': [413, `Image exceeds 5MB limit`],
-      'HF_SERVICE_ERROR': [502, 'Classification service error'],
-      'INVALID_RESPONSE': [502, 'Invalid classification response'],
-      'AbortError': [504, 'Classification timed out']
-    };
+  const errorMap = {
+  'INVALID_BASE64': [400, 'Invalid base64 image format'],
+  'IMAGE_TOO_LARGE': [413, `Image exceeds 5MB limit`],
+  'SERVICE_DOWN': [503, 'Classification service is offline'],
+  'INVALID_RESPONSE': [502, 'Invalid classification response'],
+  'TIMEOUT': [504, 'Classification timed out'],
+  'SERVICE_ERROR': [500, 'Classification service error']
+};
 
-    const [status, message] = errorMap[errorCode] || [500, 'Classification failed'];
+// Add fallback for unmapped errors
+const [status, message] = errorMap[errorCode] || [500, error.message.split(':')[1] || 'Classification failed'];
     res.status(status).json({ 
       error: message,
       code: errorCode || 'INTERNAL_ERROR'
