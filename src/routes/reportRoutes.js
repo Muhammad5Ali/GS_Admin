@@ -29,12 +29,14 @@ router.post('/', protectRoute, async (req, res) => {
     } = req.body;
 
     // Server-side validation
-    if (image && image.length > 5 * 1024 * 1024) {
-      return res.status(413).json({
-        message: 'Image too large (max 5MB)',
-        code: 'IMAGE_TOO_LARGE'
-      });
-    }
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+const buffer = Buffer.from(base64Data, 'base64');
+if (buffer.length > 5 * 1024 * 1024) {
+  return res.status(413).json({ 
+    message: 'Image too large (max 5MB)',
+    code: 'IMAGE_TOO_LARGE'
+  });
+}
 
     const missingFields = [];
     if (!title) missingFields.push('title');
@@ -63,64 +65,35 @@ router.post('/', protectRoute, async (req, res) => {
     // Only run AI check if user hasn't forced the submit
     if (!forceSubmit) {
       try {
-       const classification = await classifyImage(imageBase64);
+       const classification = await classifyImage(image);
 
-        // Reject if not waste or low confidence
-       if (!classification.isWaste || classification.confidence < 0.7) {
-  const code = !classification.isWaste ? 'NOT_WASTE' : 'LOW_CONFIDENCE';
-  const message = !classification.isWaste 
-    ? 'Image does not show recognizable waste'
-    : 'Low confidence in waste detection';
+        // Handle classification result
+    if (!classification.isWaste) {
+      return res.status(400).json({
+        message: 'Image does not show recognizable waste',
+        classification,
+        code: 'NOT_WASTE'
+      });
+    }
+     if (classification.confidence < 0.7) {
+      return res.status(400).json({
+        message: 'Low confidence in waste detection',
+        classification,
+        code: 'LOW_CONFIDENCE'
+      });
+    }
     
-  return res.status(400).json({
-    message,
-    classification,
-    code
-  });
 }
-      } catch (error) {
-        console.error('Classification Error:', error.message);
-        if (error.message.includes('HF_API_ERROR')) {
-          return res.status(503).json({
-            message: 'AI service unavailable',
-            code: 'SERVICE_UNAVAILABLE'
-          });
-        }
-
-        if (error.message.includes('Failed to fetch')) {
-          return res.status(502).json({
-            message: 'Network error connecting to AI service',
-            code: 'NETWORK_ERROR'
-          });
-        }
-
-        const errorCode = error.message.split(':')[0];
-        switch (errorCode) {
-          case 'MODEL_LOADING':
-            return res.status(503).json({
-              message:
-                'Our AI model is warming up. Please try again in 20 seconds.',
-              code: 'MODEL_LOADING'
-            });
-          case 'TIMEOUT':
-            return res.status(504).json({
-              message: 'Image verification timed out. Please try again.',
-              code: 'TIMEOUT'
-            });
-          case 'UNAUTHORIZED':
-            return res.status(401).json({
-              message: 'Authentication failed with AI service',
-              code: 'HF_UNAUTHORIZED'
-            });
-          default:
-            return res.status(502).json({
-              message: 'Image verification service error',
-              code: 'SERVICE_UNAVAILABLE',
-              error: error.message
-            });
+   catch (error) {
+        console.error('Classification Error:', error);
+    return res.status(503).json({
+      message: 'Waste verification service unavailable',
+      code: 'SERVICE_UNAVAILABLE',
+      error: error.message
+    });
         }
       }
-    }
+    
 
     // Cloudinary upload with timeout
     let uploadResponse;

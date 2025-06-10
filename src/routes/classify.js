@@ -6,7 +6,7 @@ import protectRoute from '../middleware/auth.middleware.js';
 // Add authentication
 
 const router = express.Router();
-const HF_API_URL = 'https://avatar77-wasteclassification.hf.space/api/predict';
+const HF_API_URL = 'https://avatar77-wasteclassification.hf.space/gradio_api/call/predict';
 const HF_TIMEOUT = process.env.HF_TIMEOUT || 45000; // 45 seconds
 
 // Rate limiting - 10 requests per minute
@@ -22,6 +22,7 @@ const classifyLimiter = rateLimit({
 });
 // Add health check endpoint
 router.get('/health', async (req, res) => {
+  const start = Date.now(); // ✅ Add this line
   try {
     const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     
@@ -33,14 +34,28 @@ router.get('/health', async (req, res) => {
     
     res.json({
       status: 'operational',
-      responseTime: `${Date.now() - start}ms`,
+      responseTime: `${Date.now() - start}ms`, // ✅ Now 'start' is defined
       gradioWorking: true
     });
   } catch (error) {
     res.status(500).json({
       status: 'degraded',
+      responseTime: `${Date.now() - start}ms`, // ✅ Also fix this
       error: error.message,
       gradioWorking: false
+    });
+  }
+});
+// Add this endpoint for direct testing
+router.post('/test', async (req, res) => {
+  try {
+    const { image } = req.body;
+    const result = await classifyImage(image);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ 
+      error: error.message,
+      code: 'TEST_FAILED'
     });
   }
 });
