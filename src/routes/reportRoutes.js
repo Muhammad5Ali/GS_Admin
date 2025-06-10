@@ -53,8 +53,22 @@ router.post("/", protectRoute, async (req, res) => {
     let classification;
     try {
       classification = await classifyImage(image);
+       // Handle classification result
+  if (!classification.isWaste) {
+    return res.status(400).json({ 
+      message: 'Image is not of waste',
+      classification,
+      code: 'NOT_WASTE'
+    });
+  }
     } catch (error) {
       console.error("Classification Error:", error.message);
+       if (error.message.includes('HF_API_ERROR')) {
+    return res.status(503).json({
+      message: 'AI service unavailable',
+      code: 'SERVICE_UNAVAILABLE'
+    });
+  }
       const errorCode = error.message.split(':')[0];
         if (error.message.includes('Failed to fetch')) {
     return res.status(502).json({

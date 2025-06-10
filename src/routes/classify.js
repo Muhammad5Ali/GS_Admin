@@ -44,6 +44,16 @@ router.get('/health', async (req, res) => {
     });
   }
 });
+// In classify.js
+router.get('/status', async (req, res) => {
+  try {
+    const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    await classifyImage(testImage);
+    res.json({ status: 'operational' });
+  } catch {
+    res.status(503).json({ status: 'unavailable' });
+  }
+});
 router.post('/', protectRoute, classifyLimiter, async (req, res) => {
   try {
     const { image } = req.body;
