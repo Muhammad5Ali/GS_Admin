@@ -1,83 +1,82 @@
 // services/classificationService.js
 import fetch from 'node-fetch';
 
-//const HF_API_URL = 'https://api-inference.huggingface.co/models/avatar77/wasteclassification';
-const HF_API_URL = 'https://api-inference.huggingface.co/models/avatar77/wasteclassification';
-const DEFAULT_TIMEOUT = 20000; // Increased to 20s for cold starts
+const GRADIO_API_URL = 'https://avatar77-wasteclassification.hf.space/gradio_api';
+const DEFAULT_TIMEOUT = 45000; // 45 seconds for Gradio cold starts
 
-/**
- * Classifies a base64-encoded image using a Hugging Face model.
- * @param {string} imageBase64 - The image in base64 encoding.
- * @returns {Promise<{ isWaste: boolean, label: string, confidence: number }>}
- */
 export default async function classifyImage(imageBase64) {
-  // Validate base64 format
+  // ——— Validation ———
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64)) {
     throw new Error('INVALID_BASE64');
   }
-
-  // Check size limit (5MB)
   const byteLength = Buffer.byteLength(imageBase64, 'base64');
   if (byteLength > 5 * 1024 * 1024) {
     throw new Error('IMAGE_TOO_LARGE');
   }
 
+  // ——— Setup timeout abort ———
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
 
   try {
-       const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-    const res = await fetch(HF_API_URL, {
+    // Strip any data URI prefix, then re-add as JPEG
+    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const dataURI = `data:image/jpeg;base64,${cleanBase64}`;
+
+    // ——— Step 1: initiate prediction ———
+    const initResponse = await fetch(`${GRADIO_API_URL}/call/predict`, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.HUGGINGFACE_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-     body: JSON.stringify({ 
-        inputs: cleanBase64, // Use clean base64 without header
-        options: { wait_for_model: true } // Critical for cold starts
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: [{ data: dataURI, meta: { _type: 'gradio.FileData' } }]
       }),
       signal: controller.signal
     });
-      // Handle model loading explicitly
-    if (res.status === 503) {
-      const errorData = await res.json();
-      if (errorData.error && /loading|starting/i.test(errorData.error)) {
-        throw new Error('MODEL_LOADING');
+
+    if (!initResponse.ok) {
+      const text = await initResponse.text();
+      console.error('Gradio init error:', text);
+      throw new Error(`GRADIO_INIT_ERROR:${initResponse.status}`);
+    }
+
+    const initData = await initResponse.json();
+    const eventId = initData.event_id;
+    if (!eventId) {
+      throw new Error('GRADIO_NO_EVENT_ID');
+    }
+
+    // ——— Step 2: poll for results ———
+    const resultUrl = `${GRADIO_API_URL}/call/predict/${eventId}`;
+    let resultData;
+    const maxAttempts = 10;
+    const pollInterval = 3000;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(r => setTimeout(r, pollInterval));
+      const pollRes = await fetch(resultUrl, { signal: controller.signal });
+      if (!pollRes.ok) {
+        console.error('Gradio poll error', await pollRes.text());
+        throw new Error(`GRADIO_POLL_ERROR:${pollRes.status}`);
+      }
+      resultData = await pollRes.json();
+      if (resultData.status === 'completed') break;
+      if (resultData.status === 'failed') {
+        throw new Error('GRADIO_PREDICTION_FAILED');
       }
     }
 
-    // Handle 503 model loading message
-    if (res.status === 503) {
-      const errorData = await res.json();
-      if (errorData.error && /loading/i.test(errorData.error)) {
-        throw new Error('MODEL_LOADING');
-      }
+    if (!resultData || resultData.status !== 'completed') {
+      throw new Error('GRADIO_TIMEOUT');
     }
 
-    // Handle other non-OK responses
-    if (!res.ok) {
-      const txt = await res.text();
-      console.error(`HF API Error ${res.status}:`, txt);
-
-      const code = res.status === 503 ? 'MODEL_LOADING'
-                 : res.status === 401 ? 'UNAUTHORIZED'
-                 : 'HF_SERVICE_ERROR';
-      throw new Error(`${code}:${res.status}`);
-    }
-
-    // Parse and validate response
-    const json = await res.json();
-    const { label, score } = Array.isArray(json)
-      ? json[0]
-      : { label: json.label, score: json.score || json[0]?.score };
-
-    if (!label) {
-      console.error('Invalid HF response:', json);
+    // ——— Process and validate output ———
+    const outputItem = resultData.output?.data?.[0]?.[0];
+    if (!outputItem || !outputItem.label || outputItem.confidence == null) {
+      console.error('Invalid Gradio response:', resultData);
       throw new Error('INVALID_RESPONSE');
     }
 
-    const confidence = parseFloat(score) || 0;
+    const { label, confidence } = outputItem;
     console.log(`Classification: ${label} (${confidence.toFixed(2)})`);
 
     return {
@@ -87,16 +86,18 @@ export default async function classifyImage(imageBase64) {
     };
 
   } catch (err) {
+    // Abort / timeout
     if (err.name === 'AbortError') {
       throw new Error('TIMEOUT');
     }
 
-    const knownErrors = [
-      'MODEL_LOADING', 'UNAUTHORIZED', 'HF_SERVICE_ERROR',
+    // Known error codes
+    const known = [
+      'GRADIO_INIT_ERROR', 'GRADIO_NO_EVENT_ID', 'GRADIO_POLL_ERROR',
+      'GRADIO_PREDICTION_FAILED', 'GRADIO_TIMEOUT',
       'INVALID_RESPONSE', 'IMAGE_TOO_LARGE', 'INVALID_BASE64', 'TIMEOUT'
     ];
-
-    if (knownErrors.some(e => err.message.includes(e))) {
+    if (known.some(code => err.message.includes(code))) {
       throw err;
     }
 

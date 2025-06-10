@@ -27,6 +27,7 @@
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {
+    "@gradio/client": "^1.15.2",
     "nodemon": "^3.1.9"
   }
 }

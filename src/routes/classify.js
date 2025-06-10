@@ -7,7 +7,7 @@ import protectRoute from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 const HF_API_URL = 'https://avatar77-wasteclassification.hf.space/api/predict';
-const HF_TIMEOUT = process.env.HF_TIMEOUT || 10000; // 10s default timeout
+const HF_TIMEOUT = process.env.HF_TIMEOUT || 45000; // 45 seconds
 
 // Rate limiting - 10 requests per minute
 const classifyLimiter = rateLimit({
