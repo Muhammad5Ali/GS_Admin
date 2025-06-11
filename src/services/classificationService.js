@@ -99,29 +99,24 @@ export default async function classifyImage(imageBase64) {
     // 4) Perform prediction and unpack
     try {
       const result = await client.predict("/predict", { img: buffer });
-
-      // ← Log the raw Gradio response
       console.log("Raw Gradio response:", JSON.stringify(result, null, 2));
 
-      let label, confidence;
-      if (Array.isArray(result.data)) {
-        [label, confidence] = result.data;
-      } else if (
-        result.data &&
-        typeof result.data === 'object' &&
-        'label' in result.data &&
-        'confidence' in result.data
-      ) {
-        ({ label, confidence } = result.data);
-      } else {
-        throw new Error(`Unexpected response format: ${JSON.stringify(result.data)}`);
+      // NEW: Handle the actual response format
+      if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
+        throw new Error(`INVALID_RESPONSE: Empty data array`);
       }
 
-      // compute flag
-      const isWaste = String(label).toLowerCase().includes('waste')
-                      && parseFloat(confidence) >= MIN_CONFIDENCE;
+      const prediction = result.data[0];
+      if (!prediction || typeof prediction !== 'object') {
+        throw new Error(`INVALID_RESPONSE: Expected object in data array`);
+      }
 
-      // ← New classification debug log
+      const label = prediction.label || "Unknown";
+      const confidence = prediction.confidence || 0;
+
+      const isWaste = String(label).toLowerCase().includes('waste') &&
+                      parseFloat(confidence) >= MIN_CONFIDENCE;
+
       console.log(`Classification: ${label} (${confidence}) - Waste: ${isWaste}`);
 
       // 5) Return normalized output with confidence threshold
