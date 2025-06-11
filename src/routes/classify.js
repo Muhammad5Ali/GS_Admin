@@ -53,9 +53,10 @@ router.post('/test', async (req, res) => {
     const result = await classifyImage(image);
     res.json(result);
   } catch (error) {
+    console.error('Classification test error:', error);
     res.status(500).json({ 
-      error: error.message,
-      code: 'TEST_FAILED'
+      error: 'Classification failed',
+      details: error.message
     });
   }
 });

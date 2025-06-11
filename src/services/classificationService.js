@@ -2,8 +2,11 @@
 import fetch from 'node-fetch';
 import { Client } from "@gradio/client";
 
-//const GRADIO_API_BASE = 'https://avatar77-wasteclassification.hf.space/api';  // ✅ Correct base URL
+// 📣 Log the model name as soon as this module is loaded
+console.log(`Using model: avatar77/wasteclassification`);
+
 const DEFAULT_TIMEOUT = 60000; // 60s for cold starts
+const MIN_CONFIDENCE = 0.6;    // 60% confidence threshold
 
 /**
  * Low-level helper: POST to /predict then GET /predict/{event_id}
@@ -49,18 +52,17 @@ async function callGradioAPI(rawBase64) {
     
     while (Date.now() - startTime < DEFAULT_TIMEOUT) {
       const getResp = await fetch(getUrl);
-      
       if (!getResp.ok) {
         throw new Error(`HF_API_GET_ERROR: ${getResp.status}`);
       }
 
       const result = await getResp.json();
-      
+      console.log("Raw Gradio GET response:", JSON.stringify(result, null, 2));
+
       if (result.status === 'COMPLETE') {
         return result;
       }
       
-      // Wait before polling again
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     
@@ -80,38 +82,62 @@ async function callGradioAPI(rawBase64) {
  * @returns {Promise<{isWaste:boolean,label:string,confidence:number}>}
  */
 export default async function classifyImage(imageBase64) {
+  // 1) Strip out the data URI prefix
   const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-  
+
   try {
+    // 2) Connect to Gradio client
     const client = await Client.connect(
       "avatar77/wasteclassification",
       { timeout: DEFAULT_TIMEOUT }
     );
+    console.log("Connected to Gradio client");
 
-    // Convert base64 to Buffer
+    // 3) Convert base64 to Buffer
     const buffer = Buffer.from(rawBase64, 'base64');
-    
-    // Wrap client.predict with timeout
-    const predictionPromise = client.predict("/predict", [buffer]);
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('TIMEOUT')), DEFAULT_TIMEOUT)
-    );
 
-    const result = await Promise.race([predictionPromise, timeoutPromise]);
-    
-    // Validate response
-    if (!result?.data || !Array.isArray(result.data) || result.data.length === 0) {
-      throw new Error('INVALID_RESPONSE: Unexpected API response');
+    // 4) Perform prediction and unpack
+    try {
+      const result = await client.predict("/predict", { img: buffer });
+
+      // ← Log the raw Gradio response
+      console.log("Raw Gradio response:", JSON.stringify(result, null, 2));
+
+      let label, confidence;
+      if (Array.isArray(result.data)) {
+        [label, confidence] = result.data;
+      } else if (
+        result.data &&
+        typeof result.data === 'object' &&
+        'label' in result.data &&
+        'confidence' in result.data
+      ) {
+        ({ label, confidence } = result.data);
+      } else {
+        throw new Error(`Unexpected response format: ${JSON.stringify(result.data)}`);
+      }
+
+      // compute flag
+      const isWaste = String(label).toLowerCase().includes('waste')
+                      && parseFloat(confidence) >= MIN_CONFIDENCE;
+
+      // ← New classification debug log
+      console.log(`Classification: ${label} (${confidence}) - Waste: ${isWaste}`);
+
+      // 5) Return normalized output with confidence threshold
+      return {
+        isWaste,
+        label: String(label),
+        confidence: parseFloat(confidence),
+      };
+
+    } catch (predictionErr) {
+      console.error("Prediction failed:", predictionErr);
+      throw new Error(`PREDICTION_ERROR: ${predictionErr.message}`);
     }
 
-    const [label, confidence] = result.data;
-    return {
-      isWaste: String(label).toLowerCase().includes('waste'),
-      label: String(label),
-      confidence: parseFloat(confidence),
-    };
   } catch (err) {
-    console.error('Classification failed:', err);
+    console.error('Classification failed (service down or connect error):', err);
     throw new Error(`SERVICE_DOWN: ${err.message}`);
   }
 }
