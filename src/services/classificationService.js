@@ -1,5 +1,6 @@
 // services/classificationService.js
 import fetch from 'node-fetch';
+import { Client } from "@gradio/client";
 
 //const GRADIO_API_BASE = 'https://avatar77-wasteclassification.hf.space/api';  // ✅ Correct base URL
 const DEFAULT_TIMEOUT = 60000; // 60s for cold starts
@@ -79,38 +80,38 @@ async function callGradioAPI(rawBase64) {
  * @returns {Promise<{isWaste:boolean,label:string,confidence:number}>}
  */
 export default async function classifyImage(imageBase64) {
-  // 1️⃣ Normalize: strip any data URI prefix
   const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-  if (!rawBase64) {
-    throw new Error('INVALID_BASE64: missing image data');
-  }
-
+  
   try {
-    // 2️⃣ Call your two‐step Gradio helper
-    const resultJson = await callGradioAPI(rawBase64);
+    const client = await Client.connect(
+      "avatar77/wasteclassification",
+      { timeout: DEFAULT_TIMEOUT }
+    );
 
-    // 3️⃣ Validate response shape
-    if (
-      !resultJson ||
-      !resultJson.data ||
-      !Array.isArray(resultJson.data) ||
-      resultJson.data.length === 0
-    ) {
-      console.error('Unexpected API response:', resultJson);
+    // Convert base64 to Buffer
+    const buffer = Buffer.from(rawBase64, 'base64');
+    
+    // Wrap client.predict with timeout
+    const predictionPromise = client.predict("/predict", [buffer]);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('TIMEOUT')), DEFAULT_TIMEOUT)
+    );
+
+    const result = await Promise.race([predictionPromise, timeoutPromise]);
+    
+    // Validate response
+    if (!result?.data || !Array.isArray(result.data) || result.data.length === 0) {
       throw new Error('INVALID_RESPONSE: Unexpected API response');
     }
 
-    // 4️⃣ Extract prediction – adjust index if your model returns more fields
-    const [label, confidence] = resultJson.data[0];
-
+    const [label, confidence] = result.data;
     return {
       isWaste: String(label).toLowerCase().includes('waste'),
       label: String(label),
       confidence: parseFloat(confidence),
     };
   } catch (err) {
-    console.error('Classification failed:', err.message);
-    // bubble up service errors with the original message
+    console.error('Classification failed:', err);
     throw new Error(`SERVICE_DOWN: ${err.message}`);
   }
 }
