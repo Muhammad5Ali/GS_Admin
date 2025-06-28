@@ -6,8 +6,8 @@ import { Client } from "@gradio/client";
 console.log(`Using model: avatar77/wasteclassification`);
 
 const DEFAULT_TIMEOUT = 60000; // 60s for cold starts
-const MIN_CONFIDENCE = 0.6;    // 60% confidence threshold
-const HIGH_CONFIDENCE_THRESHOLD = 0.9; // 90% high confidence threshold
+const MIN_CONFIDENCE = 0.65;    // ⬆️ Updated to 65%
+const HIGH_CONFIDENCE_THRESHOLD = 0.85; // ⬇️ Updated to 85%
 
 /**
  * Low-level helper: POST to /predict then GET /predict/{event_id}
@@ -64,7 +64,16 @@ async function callGradioAPI(rawBase64) {
  * Adds confidence thresholds and verification level.
  *
  * @param {string} imageBase64 – data URI or base64 string
- * @returns {Promise<{isWaste: boolean, label: string, confidence: number, verification: string}>}
+ * @returns {Promise<{
+ *   isWaste: boolean,
+ *   label: string,
+ *   confidence: number,
+ *   verification: string,
+ *   isHighConfidence: boolean,
+ *   isVerifiedWaste: boolean,
+ *   modelVersion: string,
+ *   needsImprovement: boolean
+ * }>}
  */
 export default async function classifyImage(imageBase64) {
   const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
@@ -104,13 +113,24 @@ export default async function classifyImage(imageBase64) {
 
     const isWaste = verification !== "unverified";
 
+    const isHighConfidence = confidence >= HIGH_CONFIDENCE_THRESHOLD;
+    const isVerifiedWaste = labelLower.includes('waste') && isHighConfidence;
+
+    const needsImprovement =
+      (labelLower.includes('waste') && confidence > 0.7 && confidence < 0.85) ||
+      (confidence > 0.9 && !labelLower.includes('waste'));
+
     console.log(`Classification: ${label} (${confidence}) - Verification: ${verification}`);
 
     return {
       isWaste,
       label: String(label),
       confidence: parseFloat(confidence),
-      verification
+      verification,
+      isHighConfidence,
+      isVerifiedWaste,
+      modelVersion: "1.0",
+      needsImprovement
     };
 
   } catch (err) {
