@@ -293,8 +293,8 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
   }
   const resetToken = user.generateResetPasswordToken();
   await user.save({ validateBeforeSave: false });
-  const resetPasswordUrl = `${process.env.FRONTEND_URL}/password/reset/${resetToken}`;
-
+  
+   const resetPasswordUrl = `greensnap://reset-password/${resetToken}`;
   const message = `Your Reset Password Token is:- \n\n ${resetPasswordUrl} \n\n If you have not requested this email then please ignore it.`;
 
   try {
