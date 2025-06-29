@@ -82,6 +82,10 @@ router.get("/me",isAuthenticated,getUser);
 router.post("/password/forgot",forgotPassword);
 //put request as we r updating the password
 router.put("/password/reset/:token",resetPassword);
+// routes/authRoutes.js
+router.get("/validate-token", isAuthenticated, (req, res) => {
+  res.status(200).json({ valid: true });
+});
 
 
 
