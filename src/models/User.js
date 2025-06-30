@@ -87,7 +87,10 @@ userSchema.methods.generateVerificationCode = function () {
 };
 userSchema.methods.generateToken = function () {
   return jwt.sign(
-    { userId: this._id },
+    { 
+      userId: this._id,
+      verified: this.accountVerified // Add verification status
+    },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE }
   );

@@ -54,6 +54,9 @@ const reportLimiter = rateLimit({
 });
 
 // Routes
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/report", reportLimiter, reportRoutes); // Rate limiter applied
 app.use("/api/users", userRoutes);

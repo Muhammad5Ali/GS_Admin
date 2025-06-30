@@ -1,16 +1,16 @@
-import cron from "cron";
-import https from "https";
+// import cron from "cron";
+// import https from "https";
 
-const job=new cron.CronJob("*/14 * * * *", function () {
-  https
-      .get(process.env.API_URL,(res)=>{
-        if(res.statusCode===200) console.log("Get request sent successfully");
-        else console.log("Get request failed",res.statusCode);
-      })   
-      .on("error",(e)=>console.error("Error with the request:",e));
-});
+// const job=new cron.CronJob("*/14 * * * *", function () {
+//   https
+//       .get(process.env.API_URL,(res)=>{
+//         if(res.statusCode===200) console.log("Get request sent successfully");
+//         else console.log("Get request failed",res.statusCode);
+//       })   
+//       .on("error",(e)=>console.error("Error with the request:",e));
+// });
 
-export default job;
+// export default job;
 
 //CRON JOB EXPLANATION
 //This is the cron job that will run every 14 minutes.
@@ -35,3 +35,36 @@ export default job;
 
 
 
+
+
+import cron from "cron";
+import http from "http";  // Changed from https to http
+
+const job = new cron.CronJob("*/14 * * * *", function () {
+  // Parse the base URL without protocol
+  const baseUrl = process.env.API_URL.replace(/https?:\/\//, '');
+  
+  // Set up HTTP options
+  const options = {
+    hostname: baseUrl.split('/')[0],
+    port: 80,  // Explicitly use port 80
+    path: '/health',
+    method: 'GET'
+  };
+
+  const req = http.request(options, (res) => {
+    if (res.statusCode === 200) {
+      console.log("Health check successful");
+    } else {
+      console.log("Health check failed", res.statusCode);
+    }
+  });
+
+  req.on('error', (e) => {
+    console.error('Health check error:', e.message);
+  });
+
+  req.end();
+});
+
+export default job;
