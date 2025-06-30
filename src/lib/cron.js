@@ -34,29 +34,28 @@
 // * 0 * * * * - At every hour
 
 
-
-
-
 import cron from "cron";
-import http from "http";  // Changed from https to http
+import https from "https";  // Changed back to https
+import { URL } from "url";
 
 const job = new cron.CronJob("*/14 * * * *", function () {
-  // Parse the base URL without protocol
-  const baseUrl = process.env.API_URL.replace(/https?:\/\//, '');
+  const apiUrl = new URL(process.env.API_URL);
   
-  // Set up HTTP options
   const options = {
-    hostname: baseUrl.split('/')[0],
-    port: 80,  // Explicitly use port 80
-    path: '/health',
-    method: 'GET'
+    hostname: apiUrl.hostname,
+    path: `${apiUrl.pathname}/health`.replace('//', '/'), // Ensure proper path
+    method: 'GET',
+    port: apiUrl.port || 443,
+    headers: {
+      'User-Agent': 'GreenSnap-Health-Check'
+    }
   };
 
-  const req = http.request(options, (res) => {
+  const req = https.request(options, (res) => {
     if (res.statusCode === 200) {
       console.log("Health check successful");
     } else {
-      console.log("Health check failed", res.statusCode);
+      console.log(`Health check failed with status: ${res.statusCode}`);
     }
   });
 
