@@ -225,8 +225,11 @@ export const verifyOTP = catchAsyncError(async (req, res, next) => {
     user.verificationCodeExpire = null;
     await user.save({ validateBeforeSave: false });
 
-    // Send success response
-    sendToken(user, 200, "Account successfully verified!", res);
+    // Send success response WITHOUT token
+    res.status(200).json({
+      success: true,
+      message: "Account successfully verified!",
+    });
 
   } catch (error) {
     console.error("OTP Verification Error:", error);
