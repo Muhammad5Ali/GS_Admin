@@ -266,6 +266,7 @@ export const login = catchAsyncError(async (req, res, next) => {
 });
 
 export const logout = catchAsyncError(async (req, res, next) => {
+  // Clear token from response
   res
     .status(200)
     .cookie("token", "", {
@@ -276,6 +277,16 @@ export const logout = catchAsyncError(async (req, res, next) => {
       success: true,
       message: "Logged out successfully.",
     });
+  
+  // Add token invalidation logic
+  const user = await User.findById(req.user._id);
+  if (user) {
+    // Increment token version to invalidate all previous tokens
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save({ validateBeforeSave: false });
+    
+    console.log(`Token invalidated for user ${user.email}. New token version: ${user.tokenVersion}`);
+  }
 });
 
 export const getUser = catchAsyncError(async (req, res, next) => {
@@ -350,6 +361,10 @@ export const resetPassword = catchAsyncError(async (req, res, next) => {
   user.password = req.body.password;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
+  
+  // Also increment token version to invalidate existing sessions
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
+  
   await user.save();
 
   sendToken(user, 200, "Reset Password Successfully.", res);
