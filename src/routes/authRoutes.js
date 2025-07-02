@@ -1,6 +1,6 @@
 import express from "express";
 import User from "../models/User.js";
-import {register,verifyOTP,login, logout, getUser, forgotPassword, resetPassword} from "../controllers/userController.js"
+import {register,verifyOTP,resendOTP,login, logout, getUser, forgotPassword, resetPassword} from "../controllers/userController.js"
 import { isAuthenticated } from "../middleware/auth.js";
 
 const router=express.Router();
@@ -76,6 +76,7 @@ const router=express.Router();
 
 router.post("/register",register);
 router.post("/verifyOTP",verifyOTP);
+router.post("/resendOTP", resendOTP);
 router.post("/login",login);
 router.post("/logout",isAuthenticated,logout);
 router.get("/me",isAuthenticated,getUser);

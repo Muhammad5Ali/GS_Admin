@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
   verificationCodeExpire: Date,
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+  cooldownExpires: Date,
   createdAt: {
     type: Date,
     default: Date.now,
@@ -43,7 +44,11 @@ const userSchema = new mongoose.Schema({
   points: {
     type: Number,
     default: 0
-  },
+  }, resendCount: {
+  type: Number,
+  default: 0,
+  min: 0  // Ensure it doesn't go negative
+},
   tokenVersion: {  // Added token version field
     type: Number,
     default: 0
