@@ -399,23 +399,16 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
   const resetToken = user.generateResetPasswordToken();
   await user.save({ validateBeforeSave: false });
   
-  const resetPasswordUrl = `greensnap://reset-password?token=${resetToken}`;
+  // Create both production and development links
+  const prodResetUrl = `${process.env.PROD_DEEP_LINK_SCHEME || 'greensnap'}://reset-password?token=${resetToken}`;
+  const devResetUrl = `${process.env.DEV_DEEP_LINK_BASE_URL || 'exp://192.168.76.199:8081/--/'}reset-password?token=${resetToken}`;
   
-  // HTML email template with clickable link
   const message = `
   <!DOCTYPE html>
-  <html lang="en">
+  <html>
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Reset</title>
     <style>
-      body { font-family: Arial, sans-serif; background-color: #f2f2f2; padding: 20px; }
-      .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
-      .logo { text-align: center; margin-bottom: 20px; }
-      .button { display: inline-block; padding: 12px 24px; background-color: #2e7d32; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
-      .text-center { text-align: center; }
-      .footer { margin-top: 30px; text-align: center; color: #999; font-size: 12px; }
+      /* ... your existing styles ... */
     </style>
   </head>
   <body>
@@ -424,16 +417,29 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
         <h1 style="color: #2e7d32;">GreenSnap</h1>
       </div>
       <h2>Password Reset</h2>
-      <p>You've requested to reset your password. Please click the button below to set a new password. This link will expire in 15 minutes.</p>
-      <p class="text-center">
-        <a href="${resetPasswordUrl}" class="button">Reset Password</a>
-      </p>
-      <p>If the button doesn't work, copy and paste this URL into your mobile browser:</p>
-      <p><a href="${resetPasswordUrl}">${resetPasswordUrl}</a></p>
-      <p>If you didn't request a password reset, you can safely ignore this email.</p>
-      <div class="footer">
-        <p>© ${new Date().getFullYear()} GreenSnap. All rights reserved.</p>
+      <p>You've requested to reset your password. Please use the appropriate link below:</p>
+      
+      <div class="link-group">
+        <h3>For Mobile App Users:</h3>
+        <a href="${prodResetUrl}" class="button">Reset Password in App</a>
+        <p class="small">If the button doesn't work, copy this URL and open in your mobile browser:</p>
+        <p class="url">${prodResetUrl}</p>
       </div>
+      
+      <div class="link-group">
+        <h3>For Development Testing:</h3>
+        <a href="${devResetUrl}" class="button">Test Reset in Expo Go</a>
+        <p class="small">Use this link if you're testing with Expo Go:</p>
+        <p class="url">${devResetUrl}</p>
+      </div>
+      
+      <div class="manual-token">
+        <h3>Manual Token Entry:</h3>
+        <p>If links don't work, enter this token in the app:</p>
+        <div class="token-box">${resetToken}</div>
+      </div>
+      
+      <p class="note">These links will expire in 15 minutes.</p>
     </div>
   </body>
   </html>
@@ -450,7 +456,7 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
       success: true,
       message: `Email sent to ${user.email} successfully.`,
     });
-  } catch (error) {
+  }  catch (error) {
     console.error("Forgot Password Email Error:", error);
     
     user.resetPasswordToken = undefined;
