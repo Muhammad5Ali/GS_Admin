@@ -4,6 +4,8 @@ import User from "../models/User.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { sendToken } from "../utils/sendToken.js";
 import crypto from "crypto";
+import { generateResetLink } from '../lib/utils.js';
+import { generateResetPasswordTemplate } from '../utils/emailTemplates.js'; // New template function
 
 export const register = catchAsyncError(async (req, res, next) => {
   try {
@@ -399,52 +401,12 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
   const resetToken = user.generateResetPasswordToken();
   await user.save({ validateBeforeSave: false });
   
-  // Create both production and development links
-  const prodResetUrl = `${process.env.PROD_DEEP_LINK_SCHEME || 'greensnap'}://reset-password?token=${resetToken}`;
-  const devResetUrl = `${process.env.DEV_DEEP_LINK_BASE_URL || 'exp://192.168.76.199:8081/--/'}reset-password?token=${resetToken}`;
+  // Generate the appropriate reset link
+  const resetPasswordUrl = generateResetLink(resetToken);
   
-  const message = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <style>
-      /* ... your existing styles ... */
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="logo">
-        <h1 style="color: #2e7d32;">GreenSnap</h1>
-      </div>
-      <h2>Password Reset</h2>
-      <p>You've requested to reset your password. Please use the appropriate link below:</p>
-      
-      <div class="link-group">
-        <h3>For Mobile App Users:</h3>
-        <a href="${prodResetUrl}" class="button">Reset Password in App</a>
-        <p class="small">If the button doesn't work, copy this URL and open in your mobile browser:</p>
-        <p class="url">${prodResetUrl}</p>
-      </div>
-      
-      <div class="link-group">
-        <h3>For Development Testing:</h3>
-        <a href="${devResetUrl}" class="button">Test Reset in Expo Go</a>
-        <p class="small">Use this link if you're testing with Expo Go:</p>
-        <p class="url">${devResetUrl}</p>
-      </div>
-      
-      <div class="manual-token">
-        <h3>Manual Token Entry:</h3>
-        <p>If links don't work, enter this token in the app:</p>
-        <div class="token-box">${resetToken}</div>
-      </div>
-      
-      <p class="note">These links will expire in 15 minutes.</p>
-    </div>
-  </body>
-  </html>
-  `;
-
+  // Use a template function for the email content
+  const message = generateResetPasswordTemplate(resetPasswordUrl, resetToken);
+  
   try {
     await sendEmail({
       email: user.email,
@@ -454,9 +416,9 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
     
     res.status(200).json({
       success: true,
-      message: `Email sent to ${user.email} successfully.`,
+      message: `Password reset instructions sent to ${user.email}`,
     });
-  }  catch (error) {
+  } catch (error) {
     console.error("Forgot Password Email Error:", error);
     
     user.resetPasswordToken = undefined;
