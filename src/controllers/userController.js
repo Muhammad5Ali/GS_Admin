@@ -162,7 +162,7 @@ function generateEmailTemplate(verificationCode, username) {
             <!-- Expiry Notice -->
             <tr>
               <td style="padding: 0 40px 20px; font-size:14px; color:#666;">
-                This code will expire in <strong>10 minutes</strong>. If you did not request this, simply ignore this email.
+                This code will expire in <strong>5 minutes</strong>. If you did not request this, simply ignore this email.
               </td>
             </tr>
 
