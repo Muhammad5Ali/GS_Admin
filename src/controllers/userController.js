@@ -399,14 +399,50 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
   const resetToken = user.generateResetPasswordToken();
   await user.save({ validateBeforeSave: false });
   
-
   const resetPasswordUrl = `greensnap://reset-password?token=${resetToken}`;
-  const message = `Your Reset Password Token is:- \n\n ${resetPasswordUrl} \n\n If you have not requested this email then please ignore it.`;
+  
+  // HTML email template with clickable link
+  const message = `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset</title>
+    <style>
+      body { font-family: Arial, sans-serif; background-color: #f2f2f2; padding: 20px; }
+      .container { max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; }
+      .logo { text-align: center; margin-bottom: 20px; }
+      .button { display: inline-block; padding: 12px 24px; background-color: #2e7d32; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+      .text-center { text-align: center; }
+      .footer { margin-top: 30px; text-align: center; color: #999; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">
+        <h1 style="color: #2e7d32;">GreenSnap</h1>
+      </div>
+      <h2>Password Reset</h2>
+      <p>You've requested to reset your password. Please click the button below to set a new password. This link will expire in 15 minutes.</p>
+      <p class="text-center">
+        <a href="${resetPasswordUrl}" class="button">Reset Password</a>
+      </p>
+      <p>If the button doesn't work, copy and paste this URL into your mobile browser:</p>
+      <p><a href="${resetPasswordUrl}">${resetPasswordUrl}</a></p>
+      <p>If you didn't request a password reset, you can safely ignore this email.</p>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} GreenSnap. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
 
   try {
     await sendEmail({
       email: user.email,
-      subject: "GREENSNAP APP RESET PASSWORD",
+      subject: "GreenSnap Password Reset Instructions",
       message,
     });
     
@@ -415,7 +451,7 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
       message: `Email sent to ${user.email} successfully.`,
     });
   } catch (error) {
-    console.error("Forgot Password Email Error:", error); // Enhanced logging
+    console.error("Forgot Password Email Error:", error);
     
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
@@ -423,7 +459,7 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
     
     return next(
       new ErrorHandler(
-        error.message || "Cannot send reset password token.",
+        error.message || "Cannot send reset password email.",
         500
       )
     );
