@@ -398,31 +398,29 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("User not found.", 404));
   }
   
-  const resetToken = user.generateResetPasswordToken();
+  // Generate reset OTP instead of token
+  const resetOTP = user.generateResetOTP();
   await user.save({ validateBeforeSave: false });
   
-  // Generate the appropriate reset link
-  const resetPasswordUrl = generateResetLink(resetToken);
-  
-  // Use a template function for the email content
-  const message = generateResetPasswordTemplate(resetPasswordUrl, resetToken);
-  
+  // Send OTP via email
   try {
+    const message = generateResetOTPTemplate(resetOTP, user.username);
     await sendEmail({
       email: user.email,
-      subject: "GreenSnap Password Reset Instructions",
+      subject: "GreenSnap Password Reset OTP",
       message,
     });
     
     res.status(200).json({
       success: true,
-      message: `Password reset instructions sent to ${user.email}`,
+      message: `Password reset OTP sent to ${user.email}`,
     });
   } catch (error) {
     console.error("Forgot Password Email Error:", error);
     
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
+    // Clear reset fields on error
+    user.resetPasswordOTP = undefined;
+    user.resetPasswordOTPExpire = undefined;
     await user.save({ validateBeforeSave: false });
     
     return next(
@@ -434,45 +432,57 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
   }
 });
 
-export const resetPassword = catchAsyncError(async (req, res, next) => {
-  const { token } = req.params;
-  
-  try {
-    const resetPasswordToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
-      
-    const user = await User.findOne({
-      resetPasswordToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
-    
-    if (!user) {
-      return next(
-        new ErrorHandler(
-          "Reset password token is invalid or has expired.",
-          400
-        )
-      );
-    }
+export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
+  const { email, otp } = req.body;
 
-    if (req.body.password !== req.body.confirmPassword) {
-      return next(
-        new ErrorHandler("Password and confirm password do not match.", 400)
-      );
-    }
-
-    user.password = req.body.password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    user.tokenVersion = (user.tokenVersion || 0) + 1;
-    
-    await user.save();
-
-    sendToken(user, 200, "Password reset successfully.", res);
-  } catch (error) {
-    console.error("Password Reset Error:", error); // Added error logging
-    next(new ErrorHandler("Internal Server Error", 500));
+  // Validate input
+  if (!email || !otp) {
+    return next(new ErrorHandler("Email and OTP are required.", 400));
   }
+
+  const user = await User.findOne({
+    email,
+    resetPasswordOTP: otp,
+    resetPasswordOTPExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return next(new ErrorHandler("Invalid OTP or expired.", 400));
+  }
+
+  // Clear OTP after verification
+  user.resetPasswordOTP = undefined;
+  user.resetPasswordOTPExpire = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    success: true,
+    message: "OTP verified successfully.",
+  });
+});
+
+export const resetPasswordWithOTP = catchAsyncError(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  // Validate input
+  if (!email || !password) {
+    return next(new ErrorHandler("Email and password are required.", 400));
+  }
+
+  const user = await User.findOne({ email, accountVerified: true });
+  
+  if (!user) {
+    return next(new ErrorHandler("User not found.", 404));
+  }
+
+  // Update password
+  user.password = password;
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
+  await user.save();
+
+  // Send success response
+  res.status(200).json({
+    success: true,
+    message: "Password has been reset successfully.",
+  });
 });

@@ -1,6 +1,6 @@
 import express from "express";
 import User from "../models/User.js";
-import {register,verifyOTP,resendOTP,login, logout, getUser, forgotPassword, resetPassword} from "../controllers/userController.js"
+import {register,verifyOTP,resendOTP,login, logout, getUser, forgotPassword,verifyResetOTP, resetPasswordWithOTP} from "../controllers/userController.js"
 import { isAuthenticated } from "../middleware/auth.js";
 
 const router=express.Router();
@@ -80,13 +80,9 @@ router.post("/resendOTP", resendOTP);
 router.post("/login",login);
 router.post("/logout",isAuthenticated,logout);
 router.get("/me",isAuthenticated,getUser);
-router.post("/password/forgot",forgotPassword);
-//put request as we r updating the password
-router.put("/password/reset/:token",resetPassword);
-// routes/authRoutes.js
-router.get("/validate-token", isAuthenticated, (req, res) => {
-  res.status(200).json({ valid: true });
-});
+router.post("/password/forgot", forgotPassword);
+router.post("/password/verify-otp", verifyResetOTP);
+router.put("/password/reset", resetPasswordWithOTP); 
 
 
 

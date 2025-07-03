@@ -28,6 +28,8 @@ const userSchema = new mongoose.Schema({
   verificationCodeExpire: Date,
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+  resetPasswordOTP: Number,       // Added for OTP reset
+  resetPasswordOTPExpire: Date,   // Added for OTP expiration
   cooldownExpires: Date,
   createdAt: {
     type: Date,
@@ -44,12 +46,13 @@ const userSchema = new mongoose.Schema({
   points: {
     type: Number,
     default: 0
-  }, resendCount: {
-  type: Number,
-  default: 0,
-  min: 0  // Ensure it doesn't go negative
-},
-  tokenVersion: {  // Added token version field
+  }, 
+  resendCount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  tokenVersion: {
     type: Number,
     default: 0
   }
@@ -57,7 +60,7 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Hash password before saving it to the database
+// Hash password before saving
 userSchema.pre("save", async function(next) {
   if (!this.isModified("password")) return next();
 
@@ -66,7 +69,7 @@ userSchema.pre("save", async function(next) {
   next();
 });
 
-// Compare password function
+// Compare password
 userSchema.methods.comparePassword = async function(userPassword) {
   return await bcrypt.compare(userPassword, this.password);
 };
@@ -76,7 +79,7 @@ userSchema.methods.generateVerificationCode = function() {
     const firstDigit = Math.floor(Math.random() * 9) + 1;
     const remainingDigits = Math.floor(Math.random() * 10000)
       .toString()
-      .padStart(4, 0);
+      .padStart(4, '0');
 
     return parseInt(firstDigit + remainingDigits);
   }
@@ -88,19 +91,20 @@ userSchema.methods.generateVerificationCode = function() {
   return verificationCode;
 };
 
-// Updated token generation to include tokenVersion
+// Generate JWT
 userSchema.methods.generateToken = function() {
   return jwt.sign(
     { 
       userId: this._id,
       verified: this.accountVerified,
-      tokenVersion: this.tokenVersion  // Include token version in payload
+      tokenVersion: this.tokenVersion
     },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE }
   );
 };
 
+// Generate password reset token
 userSchema.methods.generateResetPasswordToken = function() {
   const resetToken = crypto.randomBytes(20).toString("hex");
 
@@ -112,6 +116,15 @@ userSchema.methods.generateResetPasswordToken = function() {
   this.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
 
   return resetToken;
+};
+
+// Generate password reset OTP (Added method)
+userSchema.methods.generateResetOTP = function() {
+  // Generate a 5-digit OTP
+  const otp = Math.floor(10000 + Math.random() * 90000);
+  this.resetPasswordOTP = otp;
+  this.resetPasswordOTPExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
+  return otp;
 };
 
 userSchema.index({ reportCount: -1, points: -1 });
