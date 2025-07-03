@@ -462,27 +462,34 @@ export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
 });
 
 export const resetPasswordWithOTP = catchAsyncError(async (req, res, next) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      console.error("Reset password missing fields:", req.body);
+      return next(new ErrorHandler("Email and password are required.", 400));
+    }
 
-  // Validate input
-  if (!email || !password) {
-    return next(new ErrorHandler("Email and password are required.", 400));
+    const user = await User.findOne({ email, accountVerified: true });
+    
+    if (!user) {
+      console.error("User not found for reset:", email);
+      return next(new ErrorHandler("User not found.", 404));
+    }
+
+    // Update password
+    user.password = password;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+
+    // Send success response
+    res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully.",
+    });
+    
+  } catch (error) {
+    console.error("Password reset error:", error);
+    next(new ErrorHandler("Internal Server Error", 500));
   }
-
-  const user = await User.findOne({ email, accountVerified: true });
-  
-  if (!user) {
-    return next(new ErrorHandler("User not found.", 404));
-  }
-
-  // Update password
-  user.password = password;
-  user.tokenVersion = (user.tokenVersion || 0) + 1;
-  await user.save();
-
-  // Send success response
-  res.status(200).json({
-    success: true,
-    message: "Password has been reset successfully.",
-  });
 });
