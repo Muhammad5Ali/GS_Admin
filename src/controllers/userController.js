@@ -3,6 +3,7 @@ import { catchAsyncError } from "../middleware/catchAsyncError.js";
 import User from "../models/User.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { sendToken } from "../utils/sendToken.js";
+import { generateResetOTPTemplate } from '../utils/emailTemplates.js'; // New template function
 import crypto from "crypto";
 import { generateResetLink } from '../lib/utils.js';
 import { generateResetPasswordTemplate } from '../utils/emailTemplates.js'; // New template function
