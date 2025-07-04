@@ -485,7 +485,7 @@ export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Invalid OTP code", 400));
   }
 
-  // Check expiration
+  // Check expiration - using clean, user-friendly error message
   if (user.resetPasswordOTPExpire <= Date.now()) {
     return next(new ErrorHandler("OTP has expired. Please request a new one.", 400));
   }
@@ -493,6 +493,11 @@ export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
   // Clear OTP after verification
   user.resetPasswordOTP = undefined;
   user.resetPasswordOTPExpire = undefined;
+  
+  // Also reset rate-limiting counters
+  user.resetPasswordResendCount = 0;
+  user.resetPasswordCooldownExpires = undefined;
+  
   await user.save({ validateBeforeSave: false });
 
   res.status(200).json({
