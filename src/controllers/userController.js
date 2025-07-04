@@ -473,35 +473,26 @@ export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Email and OTP are required.", 400));
   }
 
-  // Find user by email and OTP
-  const user = await User.findOne({ 
-    email, 
-    resetPasswordOTP: otp,
-    resetPasswordOTPExpire: { $exists: true } // Ensure expiration field exists
-  });
-
+  // Find user by email
+  const user = await User.findOne({ email, accountVerified: true });
+  
   if (!user) {
-    return next(new ErrorHandler("Invalid OTP.", 400));
+    return next(new ErrorHandler("User not found.", 404));
   }
 
-  // Add detailed logging before expiration check
-  console.log(`[OTP Verification] 
-    User: ${user.email} 
-    Current time: ${new Date(Date.now())}
-    Expire time: ${new Date(user.resetPasswordOTPExpire)}
-    Is expired: ${user.resetPasswordOTPExpire <= Date.now()}
-    Time difference: ${user.resetPasswordOTPExpire - Date.now()}ms`);
+  // Check if OTP matches
+  if (user.resetPasswordOTP !== Number(otp)) {
+    return next(new ErrorHandler("Invalid OTP code", 400));
+  }
 
-  // Explicitly check expiration
+  // Check expiration
   if (user.resetPasswordOTPExpire <= Date.now()) {
-    return next(new ErrorHandler("OTP has expired.", 400));
+    return next(new ErrorHandler("OTP has expired. Please request a new one.", 400));
   }
 
   // Clear OTP after verification
   user.resetPasswordOTP = undefined;
   user.resetPasswordOTPExpire = undefined;
-  user.resetPasswordResendCount = 0; // Reset attempt counter
-  user.resetPasswordCooldownExpires = undefined; // Clear cooldown
   await user.save({ validateBeforeSave: false });
 
   res.status(200).json({

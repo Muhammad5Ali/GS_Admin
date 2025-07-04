@@ -6,6 +6,16 @@ class ErrorHandler extends Error {
 }
 
 export const errorMiddleware = (err, req, res, next) => {
+  // Add detailed error logging
+  console.error(`[${new Date().toISOString()}] Error:`, {
+    message: err.message,
+    statusCode: err.statusCode,
+    path: req.path,
+    method: req.method,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    ...(process.env.NODE_ENV === 'development' && { originalError: err })
+  });
+
   err.statusCode = err.statusCode || 500;
   err.message = err.message || "Internal server error.";
 
@@ -31,6 +41,7 @@ export const errorMiddleware = (err, req, res, next) => {
   return res.status(err.statusCode).json({
     success: false,
     message: err.message,
+    ...(process.env.NODE_ENV === 'development' && { errorDetails: err.stack })
   });
 };
 
