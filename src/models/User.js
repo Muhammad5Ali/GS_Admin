@@ -129,7 +129,8 @@ userSchema.methods.generateResetOTP = function() {
   // Generate a 5-digit OTP
   const otp = Math.floor(10000 + Math.random() * 90000);
   this.resetPasswordOTP = otp;
-  this.resetPasswordOTPExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
+  // Set expiration to 5 minutes (300,000 milliseconds)
+  this.resetPasswordOTPExpire = Date.now() + 5 * 60 * 1000;
   return otp;
 };
 

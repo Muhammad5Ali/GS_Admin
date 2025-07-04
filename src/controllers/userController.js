@@ -469,22 +469,35 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
 export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
   const { email, otp } = req.body;
 
-  // Validate input
   if (!email || !otp) {
     return next(new ErrorHandler("Email and OTP are required.", 400));
   }
 
-  const user = await User.findOne({
-    email,
+  // Find user by email and OTP
+  const user = await User.findOne({ 
+    email, 
     resetPasswordOTP: otp,
-    resetPasswordOTPExpire: { $gt: Date.now() },
+    resetPasswordOTPExpire: { $exists: true } // Ensure expiration field exists
   });
 
   if (!user) {
-    return next(new ErrorHandler("Invalid OTP or expired.", 400));
+    return next(new ErrorHandler("Invalid OTP.", 400));
   }
 
-  // Clear OTP and reset rate-limiting counters
+  // Add detailed logging before expiration check
+  console.log(`[OTP Verification] 
+    User: ${user.email} 
+    Current time: ${new Date(Date.now())}
+    Expire time: ${new Date(user.resetPasswordOTPExpire)}
+    Is expired: ${user.resetPasswordOTPExpire <= Date.now()}
+    Time difference: ${user.resetPasswordOTPExpire - Date.now()}ms`);
+
+  // Explicitly check expiration
+  if (user.resetPasswordOTPExpire <= Date.now()) {
+    return next(new ErrorHandler("OTP has expired.", 400));
+  }
+
+  // Clear OTP after verification
   user.resetPasswordOTP = undefined;
   user.resetPasswordOTPExpire = undefined;
   user.resetPasswordResendCount = 0; // Reset attempt counter
