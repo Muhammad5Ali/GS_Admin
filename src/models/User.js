@@ -35,6 +35,12 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  resetPasswordResendCount: {
+  type: Number,
+  default: 0,
+  min: 0
+},
+resetPasswordCooldownExpires: Date,
   profileImage: {
     type: String,
     default: ""

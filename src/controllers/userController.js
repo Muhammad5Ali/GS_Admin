@@ -5,8 +5,7 @@ import { sendEmail } from "../utils/sendEmail.js";
 import { sendToken } from "../utils/sendToken.js";
 import { generateResetOTPTemplate } from '../utils/emailTemplates.js'; // New template function
 import crypto from "crypto";
-import { generateResetLink } from '../lib/utils.js';
-import { generateResetPasswordTemplate } from '../utils/emailTemplates.js'; // New template function
+
 
 export const register = catchAsyncError(async (req, res, next) => {
   try {
@@ -390,6 +389,9 @@ export const getUser = catchAsyncError(async (req, res, next) => {
 });
 
 export const forgotPassword = catchAsyncError(async (req, res, next) => {
+  const MAX_RESEND_ATTEMPTS = 3;
+  const COOLDOWN_HOURS = 24;
+  
   const user = await User.findOne({
     email: req.body.email,
     accountVerified: true,
@@ -399,11 +401,36 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("User not found.", 404));
   }
   
-  // Generate reset OTP instead of token
+  // Check and reset counter if cooldown expired
+  if (user.resetPasswordResendCount >= MAX_RESEND_ATTEMPTS && 
+      user.resetPasswordCooldownExpires < Date.now()) {
+    user.resetPasswordResendCount = 0;
+    user.resetPasswordCooldownExpires = undefined;
+  }
+  
+  // Check if in cooldown period
+  if (user.resetPasswordResendCount >= MAX_RESEND_ATTEMPTS) {
+    const hoursLeft = Math.ceil((user.resetPasswordCooldownExpires - Date.now()) / (3600 * 1000));
+    return next(new ErrorHandler(
+      `You've reached maximum resend attempts. Try again in ${hoursLeft} hours.`,
+      429
+    ));
+  }
+
+  // Generate reset OTP
   const resetOTP = user.generateResetOTP();
+  
+  // Update resend counter
+  user.resetPasswordResendCount = (user.resetPasswordResendCount || 0) + 1;
+  
+  // Set cooldown if max attempts reached
+  if (user.resetPasswordResendCount === MAX_RESEND_ATTEMPTS) {
+    user.resetPasswordCooldownExpires = Date.now() + COOLDOWN_HOURS * 60 * 60 * 1000;
+  }
+  
   await user.save({ validateBeforeSave: false });
   
-  // Send OTP via email
+  // Send email with OTP
   try {
     const message = generateResetOTPTemplate(resetOTP, user.username);
     await sendEmail({
@@ -419,14 +446,20 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
   } catch (error) {
     console.error("Forgot Password Email Error:", error);
     
-    // Clear reset fields on error
+    // Revert changes on email failure
     user.resetPasswordOTP = undefined;
     user.resetPasswordOTPExpire = undefined;
+    user.resetPasswordResendCount -= 1;
+    
+    if (user.resetPasswordResendCount < MAX_RESEND_ATTEMPTS) {
+      user.resetPasswordCooldownExpires = undefined;
+    }
+    
     await user.save({ validateBeforeSave: false });
     
     return next(
       new ErrorHandler(
-        error.message || "Cannot send reset password email.",
+        error.message || "Failed to send reset password email",
         500
       )
     );
@@ -451,9 +484,11 @@ export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Invalid OTP or expired.", 400));
   }
 
-  // Clear OTP after verification
+  // Clear OTP and reset rate-limiting counters
   user.resetPasswordOTP = undefined;
   user.resetPasswordOTPExpire = undefined;
+  user.resetPasswordResendCount = 0; // Reset attempt counter
+  user.resetPasswordCooldownExpires = undefined; // Clear cooldown
   await user.save({ validateBeforeSave: false });
 
   res.status(200).json({
