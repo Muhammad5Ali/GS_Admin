@@ -79,19 +79,23 @@ export default async function classifyImage(imageBase64) {
   const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
   try {
-    // Connect to new MobileNetV3 model
     const client = await Client.connect("avatar77/mobilenetv3", {
       timeout: DEFAULT_TIMEOUT
     });
     console.log("Connected to Gradio client");
 
-    // New input format required by MobileNetV3 model
-    const result = await client.predict("/predict", [
-      { 
-        data: `data:image/jpeg;base64,${rawBase64}`, 
-        name: "image.jpg" 
+    // Create a file-like object with proper Gradio FileData format
+    const fileData = {
+      data: `data:image/jpeg;base64,${rawBase64}`,
+      name: "uploaded_image.jpg",
+      is_file: false,
+      meta: {
+        _type: "gradio.FileData"
       }
-    ]);
+    };
+
+    // Send the file data to the model
+    const result = await client.predict("/predict", [fileData]);
 
     console.log("Raw Gradio response:", JSON.stringify(result, null, 2));
 
@@ -112,7 +116,7 @@ export default async function classifyImage(imageBase64) {
     const [label, confidenceStr] = prediction;
     const confidence = parseFloat(confidenceStr);
     
-    // Validate confidence value - FIXED SYNTAX ERROR HERE
+    // Validate confidence value
     if (isNaN(confidence)) {
       throw new Error(`INVALID_CONFIDENCE: ${confidenceStr}`);
     }
@@ -146,6 +150,18 @@ export default async function classifyImage(imageBase64) {
 
   } catch (err) {
     console.error('Classification failed:', err);
-    throw new Error(`SERVICE_DOWN: ${err.message}`);
+    
+    // Enhanced error logging
+    let errorMessage = 'SERVICE_DOWN: ';
+    
+    if (err.original_msg) {
+      errorMessage += err.original_msg;
+    } else if (err.message) {
+      errorMessage += err.message;
+    } else {
+      errorMessage += JSON.stringify(err);
+    }
+    
+    throw new Error(errorMessage);
   }
 }
