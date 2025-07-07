@@ -3,7 +3,6 @@ import express from 'express';
 import classifyImage from '../services/classificationService.js';
 import rateLimit from 'express-rate-limit';
 import protectRoute from '../middleware/auth.middleware.js';
-// Add authentication
 
 const router = express.Router();
 const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/gradio_api/call/predict';
@@ -20,9 +19,10 @@ const classifyLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 });
-// Add health check endpoint
+
+// Health check endpoint
 router.get('/health', async (req, res) => {
-  const start = Date.now(); // ✅ Add this line
+  const start = Date.now();
   try {
     const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     
@@ -30,23 +30,41 @@ router.get('/health', async (req, res) => {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 10000);
     
-    const result = await classifyImage(testImage, controller.signal);
+    const result = await classifyImage(testImage);
+    
+    // ✅ Verify expected model version
+    if (result.modelVersion !== "mobilenetv3-1.0") {
+      throw new Error('WRONG_MODEL_VERSION');
+    }
     
     res.json({
       status: 'operational',
-      responseTime: `${Date.now() - start}ms`, // ✅ Now 'start' is defined
-      gradioWorking: true
+      responseTime: `${Date.now() - start}ms`,
+      gradioWorking: true,
+      modelVersion: result.modelVersion  // Return model version
     });
   } catch (error) {
+    // Handle specific model version error
+    if (error.message === 'WRONG_MODEL_VERSION') {
+      return res.status(500).json({
+        status: 'degraded',
+        responseTime: `${Date.now() - start}ms`,
+        error: 'Wrong model version detected',
+        gradioWorking: true,
+        actualVersion: result?.modelVersion || 'unknown'
+      });
+    }
+    
     res.status(500).json({
       status: 'degraded',
-      responseTime: `${Date.now() - start}ms`, // ✅ Also fix this
+      responseTime: `${Date.now() - start}ms`,
       error: error.message,
       gradioWorking: false
     });
   }
 });
-// Add this endpoint for direct testing
+
+// Test classification endpoint
 router.post('/test', async (req, res) => {
   try {
     const { image } = req.body;
@@ -60,7 +78,8 @@ router.post('/test', async (req, res) => {
     });
   }
 });
-// In classify.js
+
+// Status check endpoint
 router.get('/status', async (req, res) => {
   try {
     const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -70,6 +89,8 @@ router.get('/status', async (req, res) => {
     res.status(503).json({ status: 'unavailable' });
   }
 });
+
+// Main classification endpoint
 router.post('/', protectRoute, classifyLimiter, async (req, res) => {
   try {
     const { image } = req.body;
@@ -86,17 +107,17 @@ router.post('/', protectRoute, classifyLimiter, async (req, res) => {
   } catch (error) {
     // Map errors to appropriate HTTP responses
     const errorCode = error.message.split(':')[0];
-  const errorMap = {
-  'INVALID_BASE64': [400, 'Invalid base64 image format'],
-  'IMAGE_TOO_LARGE': [413, `Image exceeds 5MB limit`],
-  'SERVICE_DOWN': [503, 'Classification service is offline'],
-  'INVALID_RESPONSE': [502, 'Invalid classification response'],
-  'TIMEOUT': [504, 'Classification timed out'],
-  'SERVICE_ERROR': [500, 'Classification service error']
-};
+    const errorMap = {
+      'INVALID_BASE64': [400, 'Invalid base64 image format'],
+      'IMAGE_TOO_LARGE': [413, `Image exceeds 5MB limit`],
+      'SERVICE_DOWN': [503, 'Classification service is offline'],
+      'INVALID_RESPONSE': [502, 'Invalid classification response'],
+      'TIMEOUT': [504, 'Classification timed out'],
+      'SERVICE_ERROR': [500, 'Classification service error']
+    };
 
-// Add fallback for unmapped errors
-const [status, message] = errorMap[errorCode] || [500, error.message.split(':')[1] || 'Classification failed'];
+    // Add fallback for unmapped errors
+    const [status, message] = errorMap[errorCode] || [500, error.message.split(':')[1] || 'Classification failed'];
     res.status(status).json({ 
       error: message,
       code: errorCode || 'INTERNAL_ERROR'

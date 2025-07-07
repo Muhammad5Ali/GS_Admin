@@ -1,14 +1,13 @@
 // services/classificationService.js
 import fetch from 'node-fetch';
 import { Client } from "@gradio/client";
-//previous
 
-// 📣 Log the model name as soon as this module is loaded
-console.log(`Using model: avatar77/wasteclassification`);
+// 📣 Update model name
+console.log(`Using model: avatar77/mobilenetv3`);
 
 const DEFAULT_TIMEOUT = 60000; // 60s for cold starts
-const MIN_CONFIDENCE = 0.65;    // ⬆️ Updated to 65%
-const HIGH_CONFIDENCE_THRESHOLD = 0.85; // ⬇️ Updated to 85%
+const MIN_CONFIDENCE = 0.65;    // Minimum confidence for waste classification
+const HIGH_CONFIDENCE_THRESHOLD = 0.85; // High confidence threshold
 
 /**
  * Low-level helper: POST to /predict then GET /predict/{event_id}
@@ -80,31 +79,51 @@ export default async function classifyImage(imageBase64) {
   const rawBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
 
   try {
-    const client = await Client.connect("avatar77/wasteclassification", {
+    // Connect to new MobileNetV3 model
+    const client = await Client.connect("avatar77/mobilenetv3", {
       timeout: DEFAULT_TIMEOUT
     });
     console.log("Connected to Gradio client");
 
-    const buffer = Buffer.from(rawBase64, 'base64');
-    const result = await client.predict("/predict", { img: buffer });
+    // New input format required by MobileNetV3 model
+    const result = await client.predict("/predict", [
+      { 
+        data: `data:image/jpeg;base64,${rawBase64}`, 
+        name: "image.jpg" 
+      }
+    ]);
 
     console.log("Raw Gradio response:", JSON.stringify(result, null, 2));
 
+    // Validate response structure
     if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
       throw new Error(`INVALID_RESPONSE: Empty data array`);
     }
 
+    // Extract prediction array [label, confidence]
     const prediction = result.data[0];
-    if (!prediction || typeof prediction !== 'object') {
-      throw new Error(`INVALID_RESPONSE: Expected object in data array`);
+    if (!Array.isArray(prediction)) {
+      throw new Error(`INVALID_RESPONSE: Expected array for prediction`);
+    }
+    if (prediction.length < 2) {
+      throw new Error(`INVALID_RESPONSE: Prediction array too short`);
     }
 
-    const label = prediction.label || "Unknown";
-    const confidence = prediction.confidence || 0;
+    const [label, confidenceStr] = prediction;
+    const confidence = parseFloat(confidenceStr);
+    
+    // Validate confidence value - FIXED SYNTAX ERROR HERE
+    if (isNaN(confidence)) {
+      throw new Error(`INVALID_CONFIDENCE: ${confidenceStr}`);
+    }
+
     const labelLower = label.toLowerCase();
 
+    // Determine verification level
     let verification = "unverified";
-    if (labelLower.includes('waste')) {
+    const isWaste = labelLower.includes('waste');
+    
+    if (isWaste) {
       if (confidence >= HIGH_CONFIDENCE_THRESHOLD) {
         verification = "high_confidence";
       } else if (confidence >= MIN_CONFIDENCE) {
@@ -112,26 +131,17 @@ export default async function classifyImage(imageBase64) {
       }
     }
 
-    const isWaste = verification !== "unverified";
-
-    const isHighConfidence = confidence >= HIGH_CONFIDENCE_THRESHOLD;
-    const isVerifiedWaste = labelLower.includes('waste') && isHighConfidence;
-
-    const needsImprovement =
-      (labelLower.includes('waste') && confidence > 0.7 && confidence < 0.85) ||
-      (confidence > 0.9 && !labelLower.includes('waste'));
-
-    console.log(`Classification: ${label} (${confidence}) - Verification: ${verification}`);
+    console.log(`Classification: ${label} (${confidence.toFixed(4)}) - Verification: ${verification}`);
 
     return {
-      isWaste,
+      isWaste: verification !== "unverified",
       label: String(label),
-      confidence: parseFloat(confidence),
+      confidence,
       verification,
-      isHighConfidence,
-      isVerifiedWaste,
-      modelVersion: "1.0",
-      needsImprovement
+      isHighConfidence: confidence >= HIGH_CONFIDENCE_THRESHOLD,
+      isVerifiedWaste: isWaste && confidence >= HIGH_CONFIDENCE_THRESHOLD,
+      modelVersion: "mobilenetv3-1.0",
+      needsImprovement: confidence > 0.7 && confidence < 0.85
     };
 
   } catch (err) {

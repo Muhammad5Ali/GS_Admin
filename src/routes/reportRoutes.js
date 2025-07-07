@@ -30,13 +30,13 @@ router.post('/', protectRoute, async (req, res) => {
 
     // Server-side validation
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-const buffer = Buffer.from(base64Data, 'base64');
-if (buffer.length > 5 * 1024 * 1024) {
-  return res.status(413).json({ 
-    message: 'Image too large (max 5MB)',
-    code: 'IMAGE_TOO_LARGE'
-  });
-}
+    const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.length > 5 * 1024 * 1024) {
+      return res.status(413).json({ 
+        message: 'Image too large (max 5MB)',
+        code: 'IMAGE_TOO_LARGE'
+      });
+    }
 
     const missingFields = [];
     if (!title) missingFields.push('title');
@@ -54,7 +54,7 @@ if (buffer.length > 5 * 1024 * 1024) {
     }
 
     // Base64 validation
-   if (!/^(data:image\/\w+;base64,)?[A-Za-z0-9+/=]+$/.test(image)) { // ✅ Allow prefix {
+    if (!/^(data:image\/\w+;base64,)?[A-Za-z0-9+/=]+$/.test(image)) {
       return res.status(400).json({
         message: 'Invalid image format',
         code: 'INVALID_IMAGE_FORMAT'
@@ -65,35 +65,37 @@ if (buffer.length > 5 * 1024 * 1024) {
     // Only run AI check if user hasn't forced the submit
     if (!forceSubmit) {
       try {
-       const classification = await classifyImage(image);
-
-        // Handle classification result
-    if (!classification.isWaste) {
-      return res.status(400).json({
-        message: 'Image does not show recognizable waste',
-        classification,
-        code: 'NOT_WASTE'
-      });
-    }
-     if (classification.confidence < 0.7) {
-      return res.status(400).json({
-        message: 'Low confidence in waste detection',
-        classification,
-        code: 'LOW_CONFIDENCE'
-      });
-    }
-    
-}
-   catch (error) {
-        console.error('Classification Error:', error);
-    return res.status(503).json({
-      message: 'Waste verification service unavailable',
-      code: 'SERVICE_UNAVAILABLE',
-      error: error.message
-    });
+        classification = await classifyImage(image);
+        
+        // 🔄 Updated classification check with dynamic confidence thresholds
+        const minConfidence = classification.isWaste ? MIN_CONFIDENCE_WASTE : MIN_CONFIDENCE_NON_WASTE;
+        
+        // Case 1: Non-waste with high confidence
+        if (!classification.isWaste && classification.confidence >= minConfidence) {
+          return res.status(400).json({
+            message: 'Image does not show recognizable waste',
+            classification,
+            code: 'NOT_WASTE'
+          });
         }
+        
+        // Case 2: Low confidence for both waste/non-waste
+        if (classification.confidence < minConfidence) {
+          return res.status(400).json({
+            message: 'Low confidence in waste detection',
+            classification,
+            code: 'LOW_CONFIDENCE'
+          });
+        }
+      } catch (error) {
+        console.error('Classification Error:', error);
+        return res.status(503).json({
+          message: 'Waste verification service unavailable',
+          code: 'SERVICE_UNAVAILABLE',
+          error: error.message
+        });
       }
-    
+    }
 
     // Cloudinary upload with timeout
     let uploadResponse;
@@ -178,14 +180,15 @@ if (buffer.length > 5 * 1024 * 1024) {
   }
 });
 
+// Constants for confidence thresholds
+const MIN_CONFIDENCE_WASTE = 0.65;     // Minimum confidence for waste classification
+const MIN_CONFIDENCE_NON_WASTE = 0.75;  // Minimum confidence for non-waste classification
 
-// Add this temporary route to test classification
-// routes/reportRoutes.js
-// In routes/reportRoutes.js
+// Test classification route
 router.get('/test-classify', async (req, res) => {
   try {
-    const sampleBase64 = "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="; // Test image
-    const result = await classifyImage(sampleBase64); // ✅ Should return classification
+    const sampleBase64 = "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const result = await classifyImage(sampleBase64);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
