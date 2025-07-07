@@ -1,6 +1,7 @@
 // services/classificationService.js
 import fetch from 'node-fetch';
 import { Client } from "@gradio/client";
+//previous
 
 // 📣 Log the model name as soon as this module is loaded
 console.log(`Using model: avatar77/wasteclassification`);
