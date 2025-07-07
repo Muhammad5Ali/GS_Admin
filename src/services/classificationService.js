@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 import { Client } from "@gradio/client";
 
 // 📣 Log the model name as soon as this module is loaded
-console.log(`Using model: avatar77/wasteclassification`);
+console.log(`Using model: avatar77/mobilenetv3`);
 
 const DEFAULT_TIMEOUT = 60000; // 60s for cold starts
 const MIN_CONFIDENCE = 0.65;    // ⬆️ Updated to 65%
@@ -14,7 +14,7 @@ const HIGH_CONFIDENCE_THRESHOLD = 0.85; // ⬇️ Updated to 85%
  * (not used currently, but can be reused for fallback or debugging)
  */
 async function callGradioAPI(rawBase64) {
-  const GRADIO_API_BASE = 'https://avatar77-wasteclassification.hf.space';
+  const GRADIO_API_BASE = 'https://avatar77-mobilenetv3.hf.space';
   const postUrl = `${GRADIO_API_BASE}/gradio_api/call/predict`;
 
   try {

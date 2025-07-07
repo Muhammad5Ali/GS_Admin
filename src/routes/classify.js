@@ -6,7 +6,7 @@ import protectRoute from '../middleware/auth.middleware.js';
 // Add authentication
 
 const router = express.Router();
-const HF_API_URL = 'https://avatar77-wasteclassification.hf.space/gradio_api/call/predict';
+const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/gradio_api/call/predict';
 const HF_TIMEOUT = process.env.HF_TIMEOUT || 45000; // 45 seconds
 
 // Rate limiting - 10 requests per minute
