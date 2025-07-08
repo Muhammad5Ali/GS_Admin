@@ -3,9 +3,11 @@ import { catchAsyncError } from "../middleware/catchAsyncError.js";
 import User from "../models/User.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { sendToken } from "../utils/sendToken.js";
-import { generateResetOTPTemplate } from '../utils/emailTemplates.js'; // New template function
+import { 
+  generateVerificationTemplate, 
+  generateResetOTPTemplate 
+} from '../utils/emailTemplates.js';
 import crypto from "crypto";
-
 
 export const register = catchAsyncError(async (req, res, next) => {
   try {
@@ -55,14 +57,14 @@ export const register = catchAsyncError(async (req, res, next) => {
     sendVerificationEmail(verificationCode, username, email, res);
     
   } catch (error) {
-    console.error("Registration Error:", error); // Enhanced error logging
+    console.error("Registration Error:", error);
     next(error);
   }
 });
 
 async function sendVerificationEmail(verificationCode, username, email, res) {
   try {
-    const message = generateEmailTemplate(verificationCode, username); // Fixed parameter
+    const message = generateVerificationTemplate(verificationCode, username);
     await sendEmail({ 
       email, 
       subject: "Your Verification Code", 
@@ -80,114 +82,6 @@ async function sendVerificationEmail(verificationCode, username, email, res) {
       message: "Failed to send verification email.",
     });
   }
-}
-
-function generateEmailTemplate(verificationCode, username) {
-  return `
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
-    <title>GreenSnap Verification Code</title>
-  </head>
-  <body style="margin:0; padding:0; background-color:#f2f2f2;">
-    <table
-      width="100%"
-      cellpadding="0"
-      cellspacing="0"
-      role="presentation"
-      style="background-color:#f2f2f2; padding: 20px 0;"
-    >
-      <tr>
-        <td align="center">
-          <table
-            width="600"
-            cellpadding="0"
-            cellspacing="0"
-            role="presentation"
-            style="background:#ffffff; border-radius:8px; overflow:hidden; font-family:Arial, sans-serif;"
-          >
-
-            <!-- Inline SVG Logo -->
-            <tr>
-              <td align="center" style="padding: 30px 0 10px;">
-                <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="50" r="48" fill="#2e7d32" />
-                  <path d="M50 20 C65 20, 80 35, 50 80 C20 35, 35 20, 50 20 Z" fill="#a5d6a7"/>
-                </svg>
-              </td>
-            </tr>
-
-            <!-- Title -->
-            <tr>
-              <td style="padding: 0 40px 10px; text-align:center;">
-                <h1 style="margin:0; font-size:24px; color:#2e7d32;">
-                  Your GreenSnap Verification Code
-                </h1>
-              </td>
-            </tr>
-
-            <!-- Greeting -->
-            <tr>
-              <td style="padding: 0 40px 20px; font-size:16px; color:#333;">
-               <p style="margin:0;">Hello, ${username},</p>
-                <p style="margin:10px 0 0;">
-                  Thank you for signing up for <strong>GreenSnap</strong>. Please use the verification code below to confirm your email address:
-                </p>
-              </td>
-            </tr>
-
-            <!-- Code Display -->
-            <tr>
-              <td align="center" style="padding: 0 40px 30px;">
-                <div
-                  style="
-                    display:inline-block;
-                    font-size:32px;
-                    font-weight:bold;
-                    color:#2e7d32;
-                    letter-spacing:4px;
-                    padding:15px 25px;
-                    border:2px dashed #2e7d32;
-                    border-radius:6px;
-                  "
-                >
-                  ${verificationCode}
-                </div>
-              </td>
-            </tr>
-
-            <!-- Expiry Notice -->
-            <tr>
-              <td style="padding: 0 40px 20px; font-size:14px; color:#666;">
-                This code will expire in <strong>5 minutes</strong>. If you did not request this, simply ignore this email.
-              </td>
-            </tr>
-
-            <!-- Footer -->
-            <tr>
-              <td style="background-color:#f9f9f9; padding:20px 40px; font-size:12px; color:#999; text-align:center;">
-                <p style="margin:0;">
-                  © ${new Date().getFullYear()} GreenSnap, Inc. All rights reserved.
-                </p>
-                <p style="margin:8px 0 0;">
-                  If you have any questions, feel free to contact us at
-                  <a href="mailto:greensnapofficial@gmail.com">greensnapofficial@gmail.com</a>
-                </p>
-              </td>
-            </tr>
-
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-  </html>
-  `;
 }
 
 export const verifyOTP = catchAsyncError(async (req, res, next) => {
@@ -239,7 +133,7 @@ export const verifyOTP = catchAsyncError(async (req, res, next) => {
     });
 
   } catch (error) {
-    console.error("OTP Verification Error:", error); // Enhanced error logging
+    console.error("OTP Verification Error:", error);
     next(new ErrorHandler("Internal Server Error", 500));
   }
 });
@@ -302,7 +196,7 @@ export const resendOTP = catchAsyncError(async (req, res, next) => {
 
   // Send email
   try {
-    const message = generateEmailTemplate(verificationCode, user.username);
+    const message = generateVerificationTemplate(verificationCode, user.username);
     await sendEmail({ 
       email, 
       subject: "Your New Verification Code", 
@@ -362,8 +256,8 @@ export const logout = catchAsyncError(async (req, res, next) => {
     .cookie("token", "", {
       expires: new Date(Date.now()),
       httpOnly: true,
-      sameSite: "none", // Added for cross-site cookies
-      secure: true      // Added for HTTPS only
+      sameSite: "none",
+      secure: true
     })
     .json({
       success: true,
@@ -485,16 +379,20 @@ export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Invalid OTP code", 400));
   }
 
-  // Check expiration - using clean, user-friendly error message
+  // Check expiration
   if (user.resetPasswordOTPExpire <= Date.now()) {
     return next(new ErrorHandler("OTP has expired. Please request a new one.", 400));
   }
 
+  // SECURITY ENHANCEMENT: Set verification flags
+  user.resetPasswordVerified = true;
+  user.resetPasswordVerifiedExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+  
   // Clear OTP after verification
   user.resetPasswordOTP = undefined;
   user.resetPasswordOTPExpire = undefined;
   
-  // Also reset rate-limiting counters
+  // Reset rate-limiting counters
   user.resetPasswordResendCount = 0;
   user.resetPasswordCooldownExpires = undefined;
   
@@ -502,7 +400,7 @@ export const verifyResetOTP = catchAsyncError(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: "OTP verified successfully.",
+    message: "OTP verified successfully. You can now reset your password.",
   });
 });
 
@@ -510,24 +408,34 @@ export const resetPasswordWithOTP = catchAsyncError(async (req, res, next) => {
   try {
     const { email, password } = req.body;
     
+    // Validate required fields
     if (!email || !password) {
-      console.error("Reset password missing fields:", req.body);
       return next(new ErrorHandler("Email and password are required.", 400));
     }
 
-    const user = await User.findOne({ email, accountVerified: true });
+    // SECURITY ENHANCEMENT: Verify OTP was validated
+    const user = await User.findOne({ 
+      email, 
+      accountVerified: true,
+      resetPasswordVerified: true,
+      resetPasswordVerifiedExpires: { $gt: Date.now() }
+    });
     
     if (!user) {
-      console.error("User not found for reset:", email);
-      return next(new ErrorHandler("User not found.", 404));
+      console.error("Unauthorized password reset attempt:", email);
+      return next(new ErrorHandler("Password reset not authorized or expired", 401));
     }
 
-    // Update password
+    // Update security credentials
     user.password = password;
     user.tokenVersion = (user.tokenVersion || 0) + 1;
+    
+    // Clear verification flags
+    user.resetPasswordVerified = undefined;
+    user.resetPasswordVerifiedExpires = undefined;
+    
     await user.save();
 
-    // Send success response
     res.status(200).json({
       success: true,
       message: "Password has been reset successfully.",

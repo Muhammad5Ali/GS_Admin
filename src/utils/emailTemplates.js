@@ -1,61 +1,115 @@
 // utils/emailTemplates.js
-export const generateResetPasswordTemplate = (resetLink, token) => {
+
+// Verification Email Template
+export const generateVerificationTemplate = (verificationCode, username) => {
   return `
   <!DOCTYPE html>
-  <html>
+  <html lang="en">
   <head>
-    <style>
-      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-      .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
-      .logo { text-align: center; margin-bottom: 20px; }
-      .logo h1 { color: #2e7d32; }
-      .button { 
-        display: inline-block; 
-        padding: 10px 20px; 
-        background-color: #2e7d32; 
-        color: white !important; 
-        text-decoration: none; 
-        border-radius: 4px; 
-        margin: 10px 0; 
-      }
-      .token-box {
-        padding: 10px;
-        background-color: #f8f9fa;
-        border: 1px dashed #ccc;
-        font-family: monospace;
-        word-break: break-all;
-        margin: 10px 0;
-      }
-      .note { color: #6c757d; font-size: 0.9em; }
-    </style>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>GreenSnap Verification Code</title>
   </head>
-  <body>
-    <div class="container">
-      <div class="logo">
-        <h1>GreenSnap</h1>
-      </div>
-      
-      <h2>Password Reset</h2>
-      <p>You've requested to reset your password. Click the button below to reset it:</p>
-      
-      <a href="${resetLink}" class="button">Reset Password</a>
-      
-      <p>Or copy this URL into your browser:</p>
-      <p class="token-box">${resetLink}</p>
-      
-      <div class="manual-token">
-        <p>If you're unable to use the link, enter this token in the app:</p>
-        <div class="token-box">${token}</div>
-      </div>
-      
-      <p class="note">This link will expire in 15 minutes. If you didn't request this, please ignore this email.</p>
-    </div>
+  <body style="margin:0; padding:0; background-color:#f2f2f2;">
+    <table
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      role="presentation"
+      style="background-color:#f2f2f2; padding: 20px 0;"
+    >
+      <tr>
+        <td align="center">
+          <table
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            role="presentation"
+            style="background:#ffffff; border-radius:8px; overflow:hidden; font-family:Arial, sans-serif;"
+          >
+
+            <!-- Inline SVG Logo -->
+            <tr>
+              <td align="center" style="padding: 30px 0 10px;">
+                <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="50" r="48" fill="#2e7d32" />
+                  <path d="M50 20 C65 20, 80 35, 50 80 C20 35, 35 20, 50 20 Z" fill="#a5d6a7"/>
+                </svg>
+              </td>
+            </tr>
+
+            <!-- Title -->
+            <tr>
+              <td style="padding: 0 40px 10px; text-align:center;">
+                <h1 style="margin:0; font-size:24px; color:#2e7d32;">
+                  Your GreenSnap Verification Code
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Greeting -->
+            <tr>
+              <td style="padding: 0 40px 20px; font-size:16px; color:#333;">
+               <p style="margin:0;">Hello, ${username},</p>
+                <p style="margin:10px 0 0;">
+                  Thank you for signing up for <strong>GreenSnap</strong>. Please use the verification code below to confirm your email address:
+                </p>
+              </td>
+            </tr>
+
+            <!-- Code Display -->
+            <tr>
+              <td align="center" style="padding: 0 40px 30px;">
+                <div
+                  style="
+                    display:inline-block;
+                    font-size:32px;
+                    font-weight:bold;
+                    color:#2e7d32;
+                    letter-spacing:4px;
+                    padding:15px 25px;
+                    border:2px dashed #2e7d32;
+                    border-radius:6px;
+                  "
+                >
+                  ${verificationCode}
+                </div>
+              </td>
+            </tr>
+
+            <!-- Expiry Notice -->
+            <tr>
+              <td style="padding: 0 40px 20px; font-size:14px; color:#666;">
+                This code will expire in <strong>5 minutes</strong>. If you did not request this, simply ignore this email.
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="background-color:#f9f9f9; padding:20px 40px; font-size:12px; color:#999; text-align:center;">
+                <p style="margin:0;">
+                  © ${new Date().getFullYear()} GreenSnap, Inc. All rights reserved.
+                </p>
+                <p style="margin:8px 0 0;">
+                  If you have any questions, feel free to contact us at
+                  <a href="mailto:greensnapofficial@gmail.com">greensnapofficial@gmail.com</a>
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
   </html>
   `;
 };
 
-// New OTP email template for password reset
+// Password Reset OTP Template
 export const generateResetOTPTemplate = (otp, username) => {
   return `
   <!DOCTYPE html>

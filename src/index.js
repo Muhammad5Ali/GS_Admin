@@ -65,9 +65,10 @@ app.use("/api/classify", classifyRoutes);
 
 removeUnverifiedAccounts(); // Schedule task to remove unverified accounts
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server is listening on port: ${PORT}`);
-  connectDB(); // Connect to MongoDB
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server is listening on port: ${PORT}`);
+  });
 });
 
 app.use(errorMiddleware); // Error handling middleware
