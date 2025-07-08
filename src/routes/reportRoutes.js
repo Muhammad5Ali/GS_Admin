@@ -34,10 +34,9 @@ router.post('/', protectRoute, async (req, res) => {
 
     // Server-side validation
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
     
-    // Use buffer for size validation
-    if (buffer.length > 5 * 1024 * 1024) {
+    // Size validation using base64 string
+    if (Buffer.byteLength(base64Data, 'base64') > 5 * 1024 * 1024) {
       return res.status(413).json({ 
         message: 'Image too large (max 5MB)',
         code: 'IMAGE_TOO_LARGE'
@@ -103,11 +102,12 @@ router.post('/', protectRoute, async (req, res) => {
       }
     }
 
-    // Cloudinary upload with timeout - USING BUFFER DIRECTLY
+    // Cloudinary upload with timeout - USING DATA URI
     let uploadResponse;
     try {
+      const dataUri = `data:image/jpeg;base64,${base64Data}`;
       const cloudinaryPromise = cloudinary.uploader.upload(
-        buffer,  // ✅ Using the buffer directly
+        dataUri,
         {
           resource_type: 'image',
           folder: 'reports',
