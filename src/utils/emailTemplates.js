@@ -304,31 +304,6 @@ export const generateWelcomeTemplate = (username) => {
               </td>
             </tr>
 
-            <!-- Impact Stats -->
-            <tr>
-              <td class="impact-stats">
-                <h2 style="margin-top:0;">Our Collective Impact</h2>
-                <p>Since our launch, GreenSnap users have made a real difference:</p>
-                
-                <div style="display: flex; justify-content: space-around; margin: 30px 0;">
-                  <div>
-                    <div class="stat">15,000+</div>
-                    <div class="stat-label">Waste Reports</div>
-                  </div>
-                  <div>
-                    <div class="stat">85%</div>
-                    <div class="stat-label">Cleanup Rate</div>
-                  </div>
-                  <div>
-                    <div class="stat">200+</div>
-                    <div class="stat-label">Communities</div>
-                  </div>
-                </div>
-                
-                <p><strong>You're now part of this growing movement!</strong> Together, we're creating cleaner, greener neighborhoods.</p>
-              </td>
-            </tr>
-
             <!-- Final Encouragement -->
             <tr>
               <td class="message">
