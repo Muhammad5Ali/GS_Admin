@@ -8,6 +8,10 @@ import classifyImage from '../services/classificationService.js';
 
 const router = express.Router();
 
+// Constants for confidence thresholds
+const MIN_CONFIDENCE_WASTE = 0.65;     // Minimum confidence for waste classification
+const MIN_CONFIDENCE_NON_WASTE = 0.75;  // Minimum confidence for non-waste classification
+
 // Add request logging middleware
 router.use((req, res, next) => {
   console.log(`Incoming ${req.method} to ${req.path}`);
@@ -31,6 +35,8 @@ router.post('/', protectRoute, async (req, res) => {
     // Server-side validation
     const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
+    
+    // Use buffer for size validation
     if (buffer.length > 5 * 1024 * 1024) {
       return res.status(413).json({ 
         message: 'Image too large (max 5MB)',
@@ -97,11 +103,11 @@ router.post('/', protectRoute, async (req, res) => {
       }
     }
 
-    // Cloudinary upload with timeout
+    // Cloudinary upload with timeout - USING BUFFER DIRECTLY
     let uploadResponse;
     try {
       const cloudinaryPromise = cloudinary.uploader.upload(
-        `data:image/jpeg;base64,${image}`,
+        buffer,  // ✅ Using the buffer directly
         {
           resource_type: 'image',
           folder: 'reports',
@@ -110,6 +116,7 @@ router.post('/', protectRoute, async (req, res) => {
           transformation: [{ width: 800, crop: 'limit' }, { quality: 'auto:good' }]
         }
       );
+      
       const uploadTimeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('CLOUDINARY_TIMEOUT')), 15000)
       );
@@ -179,10 +186,6 @@ router.post('/', protectRoute, async (req, res) => {
     });
   }
 });
-
-// Constants for confidence thresholds
-const MIN_CONFIDENCE_WASTE = 0.65;     // Minimum confidence for waste classification
-const MIN_CONFIDENCE_NON_WASTE = 0.75;  // Minimum confidence for non-waste classification
 
 // Test classification route
 router.get('/test-classify', async (req, res) => {
