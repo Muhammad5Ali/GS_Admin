@@ -199,6 +199,7 @@ export const generateResetOTPTemplate = (otp, username) => {
   </html>
   `;
 };
+// utils/emailTemplates.js
 export const generateWelcomeTemplate = (username) => {
   return `
   <!DOCTYPE html>
@@ -208,100 +209,156 @@ export const generateWelcomeTemplate = (username) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Welcome to GreenSnap!</title>
     <style>
-      body { margin:0; padding:0; background-color:#f2f2f2; font-family: Arial, sans-serif; }
-      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-      .content { background:#ffffff; border-radius:8px; overflow:hidden; }
-      .header { padding: 30px 0 10px; text-align: center; }
-      .title { color:#2e7d32; font-size:24px; text-align:center; padding: 10px 0; }
-      .message { padding: 20px 40px; font-size:16px; color:#333; line-height: 1.6; }
-      .cta-button { display: inline-block; background-color: #2e7d32; color: white !important; 
-                   text-decoration: none; padding: 12px 30px; border-radius: 4px; font-weight: bold;
-                   margin: 20px 0; }
+      body { margin:0; padding:0; background-color:#f5f9f5; font-family: Arial, sans-serif; }
+      .container { max-width: 600px; margin: 0 auto; }
+      .content { background:#ffffff; border-radius:12px; overflow:hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+      .header { background-color: #2e7d32; padding: 40px 0; text-align: center; }
+      .title { color:#ffffff; font-size:28px; font-weight:bold; text-align:center; padding: 10px 0; }
+      .message { padding: 30px 40px; font-size:16px; color:#333; line-height: 1.7; }
+      .mission-box { background-color: #f0f7f0; border-left: 4px solid #2e7d32; padding: 20px; margin: 25px 0; }
       .features { padding: 0 40px; }
-      .feature-item { display: flex; align-items: center; margin-bottom: 15px; }
-      .feature-icon { width: 40px; height: 40px; margin-right: 15px; }
-      .footer { background-color:#f9f9f9; padding:20px 40px; font-size:12px; color:#999; text-align:center; }
+      .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+      .feature-card { background: #f9fbf9; border-radius: 8px; padding: 20px; text-align: center; }
+      .feature-icon { width: 50px; height: 50px; margin: 0 auto 15px; }
+      .feature-title { color: #2e7d32; font-weight: bold; margin-bottom: 10px; }
+      .impact-stats { background-color: #2e7d32; color: white; padding: 30px 40px; text-align: center; }
+      .stat { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+      .stat-label { font-size: 14px; opacity: 0.9; }
+      .footer { background-color:#1a4d1f; padding:25px 40px; font-size:12px; color:#d0e3d0; text-align:center; }
+      .social-links { margin: 15px 0; }
+      .social-link { display: inline-block; margin: 0 10px; }
     </style>
   </head>
   <body>
     <table class="container" width="100%" cellpadding="0" cellspacing="0" role="presentation">
       <tr>
-        <td align="center">
+        <td align="center" style="padding: 30px 10px;">
           <table class="content" width="100%" cellpadding="0" cellspacing="0" role="presentation">
-            <!-- Logo and Header -->
+            <!-- Header -->
             <tr>
               <td class="header">
-                <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="50" cy="50" r="48" fill="#2e7d32" />
-                  <path d="M50 20 C65 20, 80 35, 50 80 C20 35, 35 20, 50 20 Z" fill="#a5d6a7"/>
-                </svg>
                 <h1 class="title">Welcome to GreenSnap, ${username}!</h1>
+                <p style="color: #a5d6a7; font-size: 18px; margin-top: 10px;">Together for a Cleaner Planet</p>
               </td>
             </tr>
 
             <!-- Welcome Message -->
             <tr>
               <td class="message">
-                <p>Thank you for joining GreenSnap - your partner in creating cleaner, greener communities!</p>
-                <p>Our mission is simple: empower people like you to report waste in your neighborhood and turn environmental awareness into action.</p>
+                <p>We're thrilled to have you join our community of environmental champions! At GreenSnap, we believe that small actions create big changes.</p>
                 
-                <div align="center">
-                  <a href="${process.env.CLIENT_URL}/report" class="cta-button">
-                    Report Your First Waste
-                  </a>
+                <div class="mission-box">
+                  <p style="margin:0;"><strong>Our Mission:</strong> Empower everyday people to transform their communities by reporting waste and inspiring collective action.</p>
                 </div>
+                
+                <p>Your account is now active and ready to make a difference. Every report you submit helps create cleaner neighborhoods and healthier ecosystems.</p>
               </td>
             </tr>
 
             <!-- Features -->
             <tr>
               <td class="features">
-                <h2 style="color:#2e7d32;">How You Make a Difference:</h2>
+                <h2 style="color:#2e7d32; text-align: center; margin-bottom: 25px;">How You Can Make an Impact</h2>
                 
-                <div class="feature-item">
-                  <div class="feature-icon">
-                    <svg viewBox="0 0 24 24" fill="#2e7d32">
-                      <path d="M21 6L3 6L3 8H21V6M3 11H18V13H3V11M3 16H15V18H3V16Z" />
-                    </svg>
+                <div class="feature-grid">
+                  <div class="feature-card">
+                    <div class="feature-icon">
+                      <svg viewBox="0 0 24 24" fill="#2e7d32">
+                        <path d="M12 2L1 9L12 16L23 9L12 2M18 12.3V18H13V12.3L12 11.6L11 12.3V18H6V12.3L1 9L12 2L23 9L18 12.3Z" />
+                      </svg>
+                    </div>
+                    <div class="feature-title">Report Waste</div>
+                    <p>Document improperly disposed waste with photos and location details</p>
                   </div>
-                  <div>
-                    <h3>Report Waste</h3>
-                    <p>Snap photos of improperly disposed waste in your community</p>
-                  </div>
-                </div>
-                
-                <div class="feature-item">
-                  <div class="feature-icon">
-                    <svg viewBox="0 0 24 24" fill="#2e7d32">
-                      <path d="M9 20L4 15.5L5.5 14L9 17.3L18.5 7.8L20 9.3L9 20Z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3>Track Cleanups</h3>
+                  
+                  <div class="feature-card">
+                    <div class="feature-icon">
+                      <svg viewBox="0 0 24 24" fill="#2e7d32">
+                        <path d="M9 20L4 15.5L5.5 14L9 17.3L18.5 7.8L20 9.3L9 20Z" />
+                      </svg>
+                    </div>
+                    <div class="feature-title">Track Progress</div>
                     <p>See your reports get resolved as local authorities take action</p>
                   </div>
-                </div>
-                
-                <div class="feature-item">
-                  <div class="feature-icon">
-                    <svg viewBox="0 0 24 24" fill="#2e7d32">
-                      <path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2M16.3 15.2L11 12.3V7H12.5V11.4L17 13.9L16.3 15.2Z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3>Earn Rewards</h3>
+                  
+                  <div class="feature-card">
+                    <div class="feature-icon">
+                      <svg viewBox="0 0 24 24" fill="#2e7d32">
+                        <path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2M16.3 15.2L11 12.3V7H12.5V11.4L17 13.9L16.3 15.2Z" />
+                      </svg>
+                    </div>
+                    <div class="feature-title">Earn Rewards</div>
                     <p>Collect points for each verified report and climb the leaderboard</p>
                   </div>
+                  
+                  <div class="feature-card">
+                    <div class="feature-icon">
+                      <svg viewBox="0 0 24 24" fill="#2e7d32">
+                        <path d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z" />
+                      </svg>
+                    </div>
+                    <div class="feature-title">Inspire Others</div>
+                    <p>Share your achievements and motivate friends to join the movement</p>
+                  </div>
                 </div>
+              </td>
+            </tr>
+
+            <!-- Impact Stats -->
+            <tr>
+              <td class="impact-stats">
+                <h2 style="margin-top:0;">Our Collective Impact</h2>
+                <p>Since our launch, GreenSnap users have made a real difference:</p>
+                
+                <div style="display: flex; justify-content: space-around; margin: 30px 0;">
+                  <div>
+                    <div class="stat">15,000+</div>
+                    <div class="stat-label">Waste Reports</div>
+                  </div>
+                  <div>
+                    <div class="stat">85%</div>
+                    <div class="stat-label">Cleanup Rate</div>
+                  </div>
+                  <div>
+                    <div class="stat">200+</div>
+                    <div class="stat-label">Communities</div>
+                  </div>
+                </div>
+                
+                <p><strong>You're now part of this growing movement!</strong> Together, we're creating cleaner, greener neighborhoods.</p>
+              </td>
+            </tr>
+
+            <!-- Final Encouragement -->
+            <tr>
+              <td class="message">
+                <h3 style="color:#2e7d32; text-align: center;">Ready to Make Your First Impact?</h3>
+                <p style="text-align: center;">Open the GreenSnap app and start reporting waste in your community today!</p>
+                
+                <p style="text-align: center; margin-top: 30px;"><em>"The greatest threat to our planet is the belief that someone else will save it."</em><br>- Robert Swan</p>
               </td>
             </tr>
 
             <!-- Footer -->
             <tr>
               <td class="footer">
+                <p style="margin:0; font-size:14px;">© ${new Date().getFullYear()} GreenSnap, Inc. All rights reserved.</p>
+                <p style="margin:10px 0;">Together, we're making communities cleaner, one report at a time</p>
+                
+                
+                <p style="margin:8px 0 0; font-size:11px; opacity:0.7;">
+                  You're receiving this email because you joined GreenSnap<br>
+                  <tr>
+              <td class="footer">
                 <p style="margin:0;">© ${new Date().getFullYear()} GreenSnap, Inc. All rights reserved.</p>
                 <p style="margin:8px 0 0;">
-                  Together, we're making communities cleaner, one report at a time
+                  If you have any questions, feel free to contact us at
+                  <a href="mailto:greensnapofficial@gmail.com" style="color:#2e7d32; text-decoration:none;">
+                    greensnapofficial@gmail.com
+                  </a>
+                </p>
+              </td>
+            </tr>
                 </p>
               </td>
             </tr>
