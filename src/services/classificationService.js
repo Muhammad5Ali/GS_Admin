@@ -6,7 +6,6 @@ console.log(`Using model: avatar77/mobilenetv3`);
 const DEFAULT_TIMEOUT = 60000;
 const MIN_CONFIDENCE = 0.65;
 const HIGH_CONFIDENCE_THRESHOLD = 0.85;
-//adding
 const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/api/predict';
 const MAX_RETRIES = 3;
 
@@ -15,6 +14,9 @@ export default async function classifyImage(imageBase64) {
   let retryCount = 0;
 
   async function attemptClassification() {
+    // Declare responseClone at function scope for error handling
+    let responseClone;
+    
     try {
       console.log("Calling Gradio API (attempt " + (retryCount + 1) + ")");
 
@@ -27,15 +29,9 @@ export default async function classifyImage(imageBase64) {
         timeout: DEFAULT_TIMEOUT
       });
 
-      // Store response for potential error logging
-      let responseClone;
-      let responseText;
-      try {
-        responseClone = response.clone();
-        responseText = await response.text();
-      } catch (e) {
-        responseText = '[Unable to read response text]';
-      }
+      // Clone response immediately for error handling
+      responseClone = response.clone();
+      const responseText = await response.text();
 
       if (!response.ok) {
         const error = new Error(`API_ERROR: ${response.status} - ${responseText}`);
@@ -49,24 +45,32 @@ export default async function classifyImage(imageBase64) {
       const result = JSON.parse(responseText);
       console.log("Raw API response:", JSON.stringify(result, null, 2));
 
-      // Validate response structure
-      if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
-        throw new Error(`INVALID_RESPONSE: Empty data array`);
+      // Handle both response formats
+      let label, confidenceValue;
+
+      // New format: {label: "Waste", confidence: 0.95}
+      if (result.label && typeof result.confidence === 'number') {
+        label = result.label;
+        confidenceValue = result.confidence;
+      } 
+      // Old format: {data: [["Waste", "0.95"]]}
+      else if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+        const prediction = result.data[0];
+        if (Array.isArray(prediction) && prediction.length >= 2) {
+          label = prediction[0];
+          confidenceValue = prediction[1];
+        } else {
+          throw new Error(`INVALID_RESPONSE: Malformed prediction array`);
+        }
+      }
+      // Error case
+      else {
+        throw new Error(`INVALID_RESPONSE: ${JSON.stringify(result)}`);
       }
 
-      const prediction = result.data[0];
-      if (!Array.isArray(prediction)) {
-        throw new Error(`INVALID_RESPONSE: Expected array for prediction`);
-      }
-      if (prediction.length < 2) {
-        throw new Error(`INVALID_RESPONSE: Prediction array too short`);
-      }
-
-      const [label, confidenceStr] = prediction;
-      const confidence = parseFloat(confidenceStr);
-      
+      const confidence = parseFloat(confidenceValue);
       if (isNaN(confidence)) {
-        throw new Error(`INVALID_CONFIDENCE: ${confidenceStr}`);
+        throw new Error(`INVALID_CONFIDENCE: ${confidenceValue}`);
       }
 
       const labelLower = label.toLowerCase();
@@ -103,7 +107,7 @@ export default async function classifyImage(imageBase64) {
         return attemptClassification();
       }
 
-      // Enhanced error logging
+      // Enhanced error logging with responseClone access
       let errorDetails = {
         message: err.message,
         stack: err.stack

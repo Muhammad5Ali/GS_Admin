@@ -26,13 +26,12 @@ router.get('/health', async (req, res) => {
   try {
     const testImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     
-    // Timeout after 10 seconds
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 10000);
     
     const result = await classifyImage(testImage);
     
-    // ✅ Verify expected model version
+    // Verify expected model version
     if (result.modelVersion !== "mobilenetv3-1.0") {
       throw new Error('WRONG_MODEL_VERSION');
     }
@@ -41,7 +40,7 @@ router.get('/health', async (req, res) => {
       status: 'operational',
       responseTime: `${Date.now() - start}ms`,
       gradioWorking: true,
-      modelVersion: result.modelVersion  // Return model version
+      modelVersion: result.modelVersion
     });
   } catch (error) {
     // Handle specific model version error
