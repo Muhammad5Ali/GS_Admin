@@ -6,6 +6,7 @@ console.log(`Using model: avatar77/mobilenetv3`);
 const DEFAULT_TIMEOUT = 60000;
 const MIN_CONFIDENCE = 0.65;
 const HIGH_CONFIDENCE_THRESHOLD = 0.85;
+//adding
 const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/api/predict';
 const MAX_RETRIES = 3;
 
