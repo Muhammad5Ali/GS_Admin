@@ -3,7 +3,7 @@ import express from 'express';
 import Report from "../models/Report.js";
 import User from "../models/User.js";
 import cloudinary from '../lib/cloudinary.js';
-import protectRoute from '../middleware/auth.middleware.js';
+import { isAuthenticated } from "../middleware/auth.js";
 import classifyImage from '../services/classificationService.js';
 
 const router = express.Router();
@@ -18,7 +18,7 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post('/', protectRoute, async (req, res) => {
+router.post('/', isAuthenticated, async (req, res) => {
   try {
     const {
       title,
@@ -199,7 +199,7 @@ router.get('/test-classify', async (req, res) => {
 });
 
 // Pagination => infinite loading
-router.get("/", protectRoute, async (req, res) => {
+router.get("/", isAuthenticated, async (req, res) => {
   try {
     const page = req.query.page || 1;
     const limit = req.query.limit || 10;
@@ -224,7 +224,7 @@ router.get("/", protectRoute, async (req, res) => {
 });
 
 // Get reports that are being reported by the logged in user 
-router.get("/user", protectRoute, async (req, res) => {
+router.get("/user", isAuthenticated, async (req, res) => {
   try {
     const reports = await Report.find({ user: req.user._id })
       .sort({ createdAt: -1 })
@@ -236,7 +236,7 @@ router.get("/user", protectRoute, async (req, res) => {
   }
 });
 
-router.delete("/:id", protectRoute, async (req, res) => {
+router.delete("/:id", isAuthenticated, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
     if (!report) {

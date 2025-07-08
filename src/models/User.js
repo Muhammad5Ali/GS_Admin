@@ -110,21 +110,7 @@ userSchema.methods.generateToken = function() {
   );
 };
 
-// Generate password reset token
-userSchema.methods.generateResetPasswordToken = function() {
-  const resetToken = crypto.randomBytes(20).toString("hex");
-
-  this.resetPasswordToken = crypto
-    .createHash("sha256")
-    .update(resetToken)
-    .digest("hex");
-
-  this.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
-
-  return resetToken;
-};
-
-// Generate password reset OTP (Added method)
+// Generate password reset OTP
 userSchema.methods.generateResetOTP = function() {
   // Generate a 5-digit OTP
   const otp = Math.floor(10000 + Math.random() * 90000);

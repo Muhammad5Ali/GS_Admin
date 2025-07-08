@@ -2,7 +2,7 @@
 import express from 'express';
 import classifyImage from '../services/classificationService.js';
 import rateLimit from 'express-rate-limit';
-import protectRoute from '../middleware/auth.middleware.js';
+import { isAuthenticated } from "../middleware/auth.js";
 
 const router = express.Router();
 const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/gradio_api/call/predict';
@@ -90,7 +90,7 @@ router.get('/status', async (req, res) => {
 });
 
 // Main classification endpoint
-router.post('/', protectRoute, classifyLimiter, async (req, res) => {
+router.post('/', isAuthenticated, classifyLimiter, async (req, res) => {
   try {
     const { image } = req.body;
     
