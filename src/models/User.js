@@ -67,6 +67,10 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  welcomeEmailSent: {
+  type: Boolean,
+  default: false
+},
   resetPasswordVerifiedExpires: Date
 }, {
   timestamps: true

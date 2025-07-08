@@ -5,7 +5,8 @@ import { sendEmail } from "../utils/sendEmail.js";
 import { sendToken } from "../utils/sendToken.js";
 import { 
   generateVerificationTemplate, 
-  generateResetOTPTemplate 
+  generateResetOTPTemplate,
+  generateWelcomeTemplate
 } from '../utils/emailTemplates.js';
 import crypto from "crypto";
 
@@ -229,11 +230,11 @@ export const login = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Email and password are required.", 400));
   }
   
-  // Find user
+  // Find user with verified account
   const user = await User.findOne({ 
     email, 
     accountVerified: true 
-  }).select("+password");
+  }).select("+password +welcomeEmailSent");  // Include welcomeEmailSent field
   
   if (!user) {
     return next(new ErrorHandler("Invalid email or password.", 400));
@@ -245,7 +246,28 @@ export const login = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Invalid email or password.", 400));
   }
   
-  // Send token
+  // Send welcome email on first login
+  if (!user.welcomeEmailSent) {
+    try {
+      const message = generateWelcomeTemplate(user.username);
+      await sendEmail({ 
+        email: user.email, 
+        subject: "Welcome to GreenSnap!", 
+        message 
+      });
+      
+      // Update user record to mark email as sent
+      user.welcomeEmailSent = true;
+      await user.save({ validateBeforeSave: false });
+      
+      console.log(`Welcome email sent to ${user.email}`);
+    } catch (emailError) {
+      console.error('Welcome email failed:', emailError);
+      // Don't block login for email failure
+    }
+  }
+  
+  // Send authentication token
   sendToken(user, 200, "User logged in successfully.", res);
 });
 

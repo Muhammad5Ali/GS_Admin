@@ -199,3 +199,117 @@ export const generateResetOTPTemplate = (otp, username) => {
   </html>
   `;
 };
+export const generateWelcomeTemplate = (username) => {
+  return `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to GreenSnap!</title>
+    <style>
+      body { margin:0; padding:0; background-color:#f2f2f2; font-family: Arial, sans-serif; }
+      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+      .content { background:#ffffff; border-radius:8px; overflow:hidden; }
+      .header { padding: 30px 0 10px; text-align: center; }
+      .title { color:#2e7d32; font-size:24px; text-align:center; padding: 10px 0; }
+      .message { padding: 20px 40px; font-size:16px; color:#333; line-height: 1.6; }
+      .cta-button { display: inline-block; background-color: #2e7d32; color: white !important; 
+                   text-decoration: none; padding: 12px 30px; border-radius: 4px; font-weight: bold;
+                   margin: 20px 0; }
+      .features { padding: 0 40px; }
+      .feature-item { display: flex; align-items: center; margin-bottom: 15px; }
+      .feature-icon { width: 40px; height: 40px; margin-right: 15px; }
+      .footer { background-color:#f9f9f9; padding:20px 40px; font-size:12px; color:#999; text-align:center; }
+    </style>
+  </head>
+  <body>
+    <table class="container" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+      <tr>
+        <td align="center">
+          <table class="content" width="100%" cellpadding="0" cellspacing="0" role="presentation">
+            <!-- Logo and Header -->
+            <tr>
+              <td class="header">
+                <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="50" cy="50" r="48" fill="#2e7d32" />
+                  <path d="M50 20 C65 20, 80 35, 50 80 C20 35, 35 20, 50 20 Z" fill="#a5d6a7"/>
+                </svg>
+                <h1 class="title">Welcome to GreenSnap, ${username}!</h1>
+              </td>
+            </tr>
+
+            <!-- Welcome Message -->
+            <tr>
+              <td class="message">
+                <p>Thank you for joining GreenSnap - your partner in creating cleaner, greener communities!</p>
+                <p>Our mission is simple: empower people like you to report waste in your neighborhood and turn environmental awareness into action.</p>
+                
+                <div align="center">
+                  <a href="${process.env.CLIENT_URL}/report" class="cta-button">
+                    Report Your First Waste
+                  </a>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Features -->
+            <tr>
+              <td class="features">
+                <h2 style="color:#2e7d32;">How You Make a Difference:</h2>
+                
+                <div class="feature-item">
+                  <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="#2e7d32">
+                      <path d="M21 6L3 6L3 8H21V6M3 11H18V13H3V11M3 16H15V18H3V16Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3>Report Waste</h3>
+                    <p>Snap photos of improperly disposed waste in your community</p>
+                  </div>
+                </div>
+                
+                <div class="feature-item">
+                  <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="#2e7d32">
+                      <path d="M9 20L4 15.5L5.5 14L9 17.3L18.5 7.8L20 9.3L9 20Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3>Track Cleanups</h3>
+                    <p>See your reports get resolved as local authorities take action</p>
+                  </div>
+                </div>
+                
+                <div class="feature-item">
+                  <div class="feature-icon">
+                    <svg viewBox="0 0 24 24" fill="#2e7d32">
+                      <path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2M16.3 15.2L11 12.3V7H12.5V11.4L17 13.9L16.3 15.2Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3>Earn Rewards</h3>
+                    <p>Collect points for each verified report and climb the leaderboard</p>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td class="footer">
+                <p style="margin:0;">© ${new Date().getFullYear()} GreenSnap, Inc. All rights reserved.</p>
+                <p style="margin:8px 0 0;">
+                  Together, we're making communities cleaner, one report at a time
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+  `;
+};
