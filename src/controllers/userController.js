@@ -270,6 +270,30 @@ export const login = catchAsyncError(async (req, res, next) => {
   // Send authentication token
   sendToken(user, 200, "User logged in successfully.", res);
 });
+export const registerSupervisor = catchAsyncError(async (req, res, next) => {
+  const { username, email, password, secretKey } = req.body;
+  
+  // Validate secret key (store in .env)
+  if (secretKey !== process.env.SUPERVISOR_SECRET) {
+    return next(new ErrorHandler("Invalid supervisor key", 401));
+  }
+
+  // Same registration logic as regular user but with role
+  const profileImage = `https://api.dicebear.com/7.x/avataaars/png?seed=${username}`;
+  const user = await User.create({
+    username,
+    email,
+    password,
+    profileImage,
+    role: 'supervisor',
+    accountVerified: true // Skip email verification for supervisors
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Supervisor account created'
+  });
+});
 
 export const logout = catchAsyncError(async (req, res, next) => {
   // Clear token from response

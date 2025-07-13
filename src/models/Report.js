@@ -53,6 +53,11 @@
       enum: ['standard', 'hazardous', 'large'],
       default: 'standard'
     },
+    status: {
+  type: String,
+  enum: ['pending', 'in-progress', 'resolved'],
+  default: 'pending'
+},
   }, {
     timestamps: true
   });
