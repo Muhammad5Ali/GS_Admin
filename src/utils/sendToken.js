@@ -23,7 +23,11 @@ export const sendToken = (user, statusCode, message, res) => {
     .cookie("token", token, cookieOptions)
     .json({
       success: true,
-      user: userData,
+      // user: userData,
+       user: {
+        ...user._doc,
+        createdAt: user.createdAt, // Ensure createdAt is included
+      },
       message,
       token,
     });
