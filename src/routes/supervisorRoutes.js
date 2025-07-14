@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth.js';
 import Report from '../models/Report.js';
 import User from '../models/User.js';
-import { resolveReport,updateReportStatus } from "../controllers/supervisorController.js";
+import { resolveReport,updateReportStatus,getResolvedReportDetails } from "../controllers/supervisorController.js";
 
 const router = express.Router();
 
@@ -119,5 +119,10 @@ router.put('/reports/:id/status',
   updateReportStatus
 );
 router.put('/reports/:id/resolve', isAuthenticated, isSupervisor, resolveReport);
+router.get('/reports/resolved/:id', 
+  isAuthenticated, 
+  isSupervisor, 
+  getResolvedReportDetails
+);
 
 export default router;

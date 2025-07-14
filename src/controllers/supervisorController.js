@@ -70,3 +70,21 @@ export const updateReportStatus = catchAsyncError(async (req, res, next) => {
     report
   });
 });
+export const getResolvedReportDetails = catchAsyncError(async (req, res, next) => {
+  const report = await Report.findById(req.params.id)
+    .populate('user', 'username profileImage')
+    .populate('resolvedBy', 'username profileImage');
+
+  if (!report) {
+    return next(new ErrorHandler("Report not found", 404));
+  }
+
+  if (report.status !== 'resolved') {
+    return next(new ErrorHandler("This report is not resolved", 400));
+  }
+
+  res.status(200).json({
+    success: true,
+    report
+  });
+});
