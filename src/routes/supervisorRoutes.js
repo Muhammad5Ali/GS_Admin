@@ -2,7 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth.js';
 import Report from '../models/Report.js';
 import User from '../models/User.js';
-import { resolveReport } from "../controllers/supervisorController.js";
+import { resolveReport,updateReportStatus } from "../controllers/supervisorController.js";
 
 const router = express.Router();
 
@@ -67,26 +67,32 @@ router.get('/reports/resolved', isAuthenticated, isSupervisor, async (req, res) 
 });
 
 // Update report status
-router.put('/reports/:id/status', isAuthenticated, isSupervisor, async (req, res) => {
-  try {
-    const { status } = req.body;
+// router.put('/reports/:id/status', isAuthenticated, isSupervisor, async (req, res) => {
+//   try {
+//     const { status } = req.body;
     
-    if (status === 'resolved') {
-      return res.status(400).json({ 
-        message: 'Use the resolve endpoint to resolve reports' 
-      });
-    }
+//     if (status === 'resolved') {
+//       return res.status(400).json({ 
+//         message: 'Use the resolve endpoint to resolve reports' 
+//       });
+//     }
     
-    const report = await Report.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-    res.json(report);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+//     const report = await Report.findByIdAndUpdate(
+//       req.params.id,
+//       { status },
+//       { new: true }
+//     );
+//     res.json(report);
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
+// Update the status route
+router.put('/reports/:id/status', 
+  isAuthenticated, 
+  isSupervisor, 
+  updateReportStatus
+);
 router.put('/reports/:id/resolve', isAuthenticated, isSupervisor, resolveReport);
 
 export default router;
