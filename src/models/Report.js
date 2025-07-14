@@ -58,6 +58,21 @@
   enum: ['pending', 'in-progress', 'resolved'],
   default: 'pending'
 },
+resolvedImage: String,
+  resolvedPublicId: String,
+  resolvedLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+    },
+    coordinates: [Number],
+  },
+  resolvedAddress: String,
+  resolvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
+   resolvedAt: Date
   }, {
     timestamps: true
   });

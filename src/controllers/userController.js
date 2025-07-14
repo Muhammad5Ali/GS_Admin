@@ -295,6 +295,7 @@ export const registerSupervisor = catchAsyncError(async (req, res, next) => {
   });
 });
 
+
 export const logout = catchAsyncError(async (req, res, next) => {
   // Clear token from response
   res
