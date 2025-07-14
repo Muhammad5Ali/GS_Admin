@@ -39,6 +39,32 @@ router.get('/reports/pending', isAuthenticated, isSupervisor, async (req, res) =
     res.status(500).json({ message: 'Server error' });
   }
 });
+// Get resolved reports
+router.get('/reports/resolved', isAuthenticated, isSupervisor, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const reports = await Report.find({ status: 'resolved' })
+      .sort({ resolvedAt: -1 }) // Sort by resolution date
+      .skip(skip)
+      .limit(limit)
+      .populate('user', 'username profileImage')
+      .populate('resolvedBy', 'username');
+
+    const totalResolved = await Report.countDocuments({ status: 'resolved' });
+
+    res.json({
+      reports,
+      currentPage: page,
+      totalResolved,
+      totalPages: Math.ceil(totalResolved / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // Update report status
 router.put('/reports/:id/status', isAuthenticated, isSupervisor, async (req, res) => {
