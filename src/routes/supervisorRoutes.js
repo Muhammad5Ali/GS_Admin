@@ -39,6 +39,31 @@ router.get('/reports/pending', isAuthenticated, isSupervisor, async (req, res) =
     res.status(500).json({ message: 'Server error' });
   }
 });
+// Get in-progress reports
+router.get('/reports/in-progress', isAuthenticated, isSupervisor, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const reports = await Report.find({ status: 'in-progress' })
+      .sort({ updatedAt: -1 }) // Sort by most recently updated
+      .skip(skip)
+      .limit(limit)
+      .populate('user', 'username profileImage');
+
+    const totalInProgress = await Report.countDocuments({ status: 'in-progress' });
+
+    res.json({
+      reports,
+      currentPage: page,
+      totalInProgress,
+      totalPages: Math.ceil(totalInProgress / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 // Get resolved reports
 router.get('/reports/resolved', isAuthenticated, isSupervisor, async (req, res) => {
   try {
