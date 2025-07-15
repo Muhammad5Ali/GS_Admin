@@ -72,6 +72,10 @@ resolvedImage: String,
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   },
+   assignedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
    resolvedAt: Date
   }, {
     timestamps: true
