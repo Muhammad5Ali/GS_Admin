@@ -87,6 +87,7 @@ export const updateReportStatus = catchAsyncError(async (req, res, next) => {
   // Assign report to supervisor when status changes to in-progress
   if (status === 'in-progress') {
     report.assignedTo = req.user._id;
+    report.assignedAt = Date.now(); // Add assignment timestamp
   }
 
   report.status = status;
@@ -101,7 +102,8 @@ export const updateReportStatus = catchAsyncError(async (req, res, next) => {
 export const getResolvedReportDetails = catchAsyncError(async (req, res, next) => {
   const report = await Report.findById(req.params.id)
     .populate('user', 'username profileImage')
-    .populate('resolvedBy', 'username profileImage');
+    .populate('resolvedBy', 'username profileImage')
+    .populate('assignedTo', 'username profileImage');
 
   if (!report) {
     return next(new ErrorHandler("Report not found", 404));
