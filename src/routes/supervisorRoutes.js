@@ -125,6 +125,37 @@ router.get('/reports/resolved/:id',
   getResolvedReportDetails
 );
 // Add this new route
+// router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
+//   try {
+//     const supervisorId = req.user._id;
+    
+//     // Get supervisor profile
+//     const supervisor = await User.findById(supervisorId)
+//       .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
+    
+//     if (!supervisor) {
+//       return res.status(404).json({ message: 'Supervisor not found' });
+//     }
+    
+//     // Get reports resolved by this supervisor
+//     const resolvedReports = await Report.find({ 
+//       resolvedBy: supervisorId,
+//       status: 'resolved'
+//     })
+//       .sort({ resolvedAt: -1 })
+//       .limit(10)
+//       .populate('user', 'username profileImage');
+    
+//     res.json({
+//       success: true,
+//       supervisor,
+//       resolvedReports
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
+// Updated profile route with real stats
 router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
   try {
     const supervisorId = req.user._id;
@@ -146,10 +177,35 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       .limit(10)
       .populate('user', 'username profileImage');
     
+    // Get in-progress reports by this supervisor
+    const inProgressReports = await Report.find({ 
+      assignedTo: supervisorId,
+      status: 'in-progress'
+    });
+    
+    // Calculate stats
+    const totalResolved = await Report.countDocuments({ 
+      resolvedBy: supervisorId,
+      status: 'resolved'
+    });
+    
+    const totalInProgress = inProgressReports.length;
+    const totalHandled = totalResolved + totalInProgress;
+    
+    // Calculate success rate (avoid division by zero)
+    const successRate = totalHandled > 0 
+      ? Math.round((totalResolved / totalHandled) * 100) 
+      : 0;
+    
     res.json({
       success: true,
       supervisor,
-      resolvedReports
+      resolvedReports,
+      stats: {
+        resolved: totalResolved,
+        inProgress: totalInProgress,
+        successRate
+      }
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
