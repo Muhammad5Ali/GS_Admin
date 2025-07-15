@@ -124,5 +124,36 @@ router.get('/reports/resolved/:id',
   isSupervisor, 
   getResolvedReportDetails
 );
+// Add this new route
+router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
+  try {
+    const supervisorId = req.user._id;
+    
+    // Get supervisor profile
+    const supervisor = await User.findById(supervisorId)
+      .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
+    
+    if (!supervisor) {
+      return res.status(404).json({ message: 'Supervisor not found' });
+    }
+    
+    // Get reports resolved by this supervisor
+    const resolvedReports = await Report.find({ 
+      resolvedBy: supervisorId,
+      status: 'resolved'
+    })
+      .sort({ resolvedAt: -1 })
+      .limit(10)
+      .populate('user', 'username profileImage');
+    
+    res.json({
+      success: true,
+      supervisor,
+      resolvedReports
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 export default router;
