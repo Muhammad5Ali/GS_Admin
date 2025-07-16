@@ -14,7 +14,4 @@ router.get("/me",isAuthenticated,getUser);
 router.post("/password/forgot", forgotPassword);
 router.post("/password/verify-otp", verifyResetOTP);
 router.put("/password/reset", resetPasswordWithOTP); 
-
-
-
 export default router;

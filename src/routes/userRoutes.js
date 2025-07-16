@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/top-reporters', async (req, res) => {
   try {
     // Fetch top 10 reporters sorted by reportCount (desc) then points (desc)
-    const topReporters = await User.find()
+    const topReporters = await User.find({ role: 'user' })
       .sort({ reportCount: -1, points: -1 })
       .limit(10)
       .select('username profileImage reportCount points _id')
