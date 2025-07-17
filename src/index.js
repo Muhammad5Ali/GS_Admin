@@ -12,6 +12,8 @@ import { connectDB } from "./lib/db.js";
 import { errorMiddleware } from "./middleware/error.js";
 import { removeUnverifiedAccounts } from "./automation/removeUnverifiedAccounts.js";
 import supervisorRoutes from "./routes/supervisorRoutes.js";
+import workerRoutes from "./routes/workerRoutes.js";
+import attendanceRoutes from "./routes/attendanceRoutes.js";
 
 const app = express();
 app.set('trust proxy', 1); // Trust reverse proxy
@@ -63,6 +65,8 @@ app.use("/api/report", reportLimiter, reportRoutes); // Rate limiter applied
 app.use("/api/users", userRoutes);
 app.use("/api/classify", classifyRoutes);
 app.use("/api/supervisor", supervisorRoutes);
+app.use("/api/workers", workerRoutes);
+app.use("/api/attendance", attendanceRoutes);
 
 
 removeUnverifiedAccounts(); // Schedule task to remove unverified accounts

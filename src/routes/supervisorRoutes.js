@@ -7,7 +7,7 @@ import { resolveReport,updateReportStatus,getResolvedReportDetails } from "../co
 const router = express.Router();
 
 // Middleware to check supervisor role
-const isSupervisor = (req, res, next) => {
+export const isSupervisor = (req, res, next) => {
   if (req.user.role !== 'supervisor') {
     return res.status(403).json({ message: 'Access denied' });
   }
