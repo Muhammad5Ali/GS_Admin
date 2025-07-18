@@ -4,7 +4,8 @@ import {
   getWorkerAttendance, 
   getTodaysAttendance,
   getAttendanceHistory,
-  getAttendanceSummary
+  getAttendanceSummary,
+  getWorkerAttendanceByDate
 } from "../controllers/attendanceController.js";
 import { isAuthenticated } from "../middleware/auth.js";
 import { isSupervisor } from "./supervisorRoutes.js";
@@ -18,5 +19,6 @@ router.get("/worker/:workerId", getWorkerAttendance);
 router.get("/today", getTodaysAttendance);
 router.get("/history", getAttendanceHistory);
 router.get("/summary", getAttendanceSummary);
+router.get("/worker/:workerId/by-date", getWorkerAttendanceByDate);
 
 export default router;

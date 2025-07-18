@@ -171,3 +171,33 @@ export const getAttendanceSummary = catchAsyncError(async (req, res, next) => {
     summary: attendance
   });
 });
+// Add this method to get worker attendance with date filtering
+export const getWorkerAttendanceByDate = catchAsyncError(async (req, res, next) => {
+  const { workerId } = req.params;
+  const { month, year } = req.query;
+  
+  // Verify worker belongs to supervisor
+  const worker = await Worker.findOne({
+    _id: workerId,
+    supervisor: req.user._id
+  });
+  
+  if (!worker) {
+    return next(new ErrorHandler("Worker not found", 404));
+  }
+
+  // Calculate date range for the month
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+  endDate.setHours(23, 59, 59, 999);
+
+  const attendance = await Attendance.find({
+    worker: workerId,
+    date: { $gte: startDate, $lte: endDate }
+  }).sort({ date: -1 });
+
+  res.status(200).json({
+    success: true,
+    attendance
+  });
+});
