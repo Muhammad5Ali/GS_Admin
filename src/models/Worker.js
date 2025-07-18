@@ -4,16 +4,24 @@ const workerSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    maxlength: 15 // Added max length constraint
   },
   phone: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    validate: { // Added phone number validation
+      validator: function(v) {
+        return /^\d{11}$/.test(v); // Validate exactly 11 digits
+      },
+      message: props => `${props.value} is not a valid phone number!`
+    }
   },
   area: {
     type: String,
-    required: true
+    required: true,
+    maxlength: 20 // Added max length constraint
   },
   supervisor: {
     type: mongoose.Schema.Types.ObjectId,

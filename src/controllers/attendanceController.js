@@ -84,3 +84,86 @@ export const getTodaysAttendance = catchAsyncError(async (req, res, next) => {
     attendance
   });
 });
+// Get attendance history by date range
+export const getAttendanceHistory = catchAsyncError(async (req, res, next) => {
+  const { startDate, endDate } = req.query;
+  
+  if (!startDate || !endDate) {
+    return next(new ErrorHandler("Start date and end date are required", 400));
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999); // Include entire end day
+
+  const workers = await Worker.find({ supervisor: req.user._id });
+  const workerIds = workers.map(worker => worker._id);
+  
+  const attendance = await Attendance.find({
+    worker: { $in: workerIds },
+    date: { $gte: start, $lte: end }
+  })
+  .populate("worker")
+  .sort({ date: -1 });
+
+  // Group by date
+  const historyByDate = {};
+  attendance.forEach(record => {
+    const dateStr = record.date.toISOString().split('T')[0];
+    if (!historyByDate[dateStr]) {
+      historyByDate[dateStr] = [];
+    }
+    historyByDate[dateStr].push({
+      workerId: record.worker._id,
+      workerName: record.worker.name,
+      status: record.status,
+      tasksCompleted: record.tasksCompleted
+    });
+  });
+
+  res.status(200).json({
+    success: true,
+    history: historyByDate
+  });
+});
+
+// Get attendance summary by date
+export const getAttendanceSummary = catchAsyncError(async (req, res, next) => {
+  const workers = await Worker.find({ supervisor: req.user._id });
+  const workerIds = workers.map(worker => worker._id);
+  
+  const attendance = await Attendance.aggregate([
+    {
+      $match: {
+        worker: { $in: workerIds.map(id => mongoose.Types.ObjectId(id)) }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+          status: "$status"
+        },
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $group: {
+        _id: "$_id.date",
+        attendance: {
+          $push: {
+            status: "$_id.status",
+            count: "$count"
+          }
+        },
+        totalWorkers: { $sum: "$count" }
+      }
+    },
+    { $sort: { _id: -1 } }
+  ]);
+
+  res.status(200).json({
+    success: true,
+    summary: attendance
+  });
+});

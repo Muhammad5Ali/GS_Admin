@@ -6,8 +6,21 @@ import ErrorHandler from "../middleware/error.js";
 export const addWorker = catchAsyncError(async (req, res, next) => {
   const { name, phone, area } = req.body;
   
-  if (!name || !phone || !area) {
+if (!name || !phone || !area) {
     return next(new ErrorHandler("All fields are required", 400));
+  }
+
+  // Validate lengths
+  if (name.length > 15) {
+    return next(new ErrorHandler("Name must be 15 characters or less", 400));
+  }
+  
+  if (phone.length !== 11 || !/^\d+$/.test(phone)) {
+    return next(new ErrorHandler("Phone must be 11 digits", 400));
+  }
+  
+  if (area.length > 20) {
+    return next(new ErrorHandler("Area must be 20 characters or less", 400));
   }
 
   const worker = await Worker.create({
