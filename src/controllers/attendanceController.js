@@ -3,7 +3,6 @@ import Attendance from "../models/Attendance.js";
 import Worker from "../models/Worker.js";
 import { catchAsyncError } from "../middleware/catchAsyncError.js";
 import ErrorHandler from "../middleware/error.js";
-import moment from 'moment-timezone';
 
 // Mark attendance
 export const markAttendance = catchAsyncError(async (req, res, next) => {
@@ -23,36 +22,22 @@ export const markAttendance = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Worker not found", 404));
   }
 
-  // Get today's date in Pakistan time (UTC+5)
-  const todayPakistan = moment().tz('Asia/Karachi').startOf('day').toDate();
-  const tomorrowPakistan = moment(todayPakistan).add(1, 'day').toDate();
+  // Get today's date at midnight
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  // Check if attendance already exists for today
-  const existingAttendance = await Attendance.findOne({
-    worker: workerId,
-    date: { 
-      $gte: todayPakistan,
-      $lt: tomorrowPakistan
-    }
-  });
+  // Create/update attendance
+  const attendance = await Attendance.findOneAndUpdate(
+    { worker: workerId, date: today },
+    { 
+      status,
+      tasksCompleted: tasksCompleted || 0,
+      supervisor: req.user._id
+    },
+    { upsert: true, new: true, runValidators: true }
+  ).populate("worker");
 
-  if (existingAttendance) {
-    return next(new ErrorHandler("Attendance already marked for today", 400));
-  }
-
-  // Create new attendance
-  const attendance = await Attendance.create({
-    worker: workerId,
-    date: todayPakistan,
-    status,
-    tasksCompleted: tasksCompleted || 0,
-    supervisor: req.user._id
-  });
-
-  // Populate worker details
-  await attendance.populate("worker");
-
-  res.status(201).json({
+  res.status(200).json({
     success: true,
     attendance
   });
@@ -84,19 +69,15 @@ export const getWorkerAttendance = catchAsyncError(async (req, res, next) => {
 
 // Get today's attendance for all workers
 export const getTodaysAttendance = catchAsyncError(async (req, res, next) => {
-  // Get today in Pakistan time
-  const todayPakistan = moment().tz('Asia/Karachi').startOf('day').toDate();
-  const tomorrowPakistan = moment(todayPakistan).add(1, 'day').toDate();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   
   const workers = await Worker.find({ supervisor: req.user._id });
   const workerIds = workers.map(worker => worker._id);
   
   const attendance = await Attendance.find({
     worker: { $in: workerIds },
-    date: { 
-      $gte: todayPakistan,
-      $lt: tomorrowPakistan
-    }
+    date: today
   }).populate("worker");
 
   res.status(200).json({
@@ -104,7 +85,6 @@ export const getTodaysAttendance = catchAsyncError(async (req, res, next) => {
     attendance
   });
 });
-
 // Get attendance history by date range
 export const getAttendanceHistory = catchAsyncError(async (req, res, next) => {
   const { startDate, endDate } = req.query;
@@ -113,9 +93,9 @@ export const getAttendanceHistory = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Start date and end date are required", 400));
   }
 
-  // Convert to Pakistan time
-  const start = moment.tz(startDate, 'Asia/Karachi').startOf('day').toDate();
-  const end = moment.tz(endDate, 'Asia/Karachi').endOf('day').toDate();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999); // Include entire end day
 
   const workers = await Worker.find({ supervisor: req.user._id });
   const workerIds = workers.map(worker => worker._id);
@@ -130,7 +110,7 @@ export const getAttendanceHistory = catchAsyncError(async (req, res, next) => {
   // Group by date
   const historyByDate = {};
   attendance.forEach(record => {
-    const dateStr = moment(record.date).tz('Asia/Karachi').format('YYYY-MM-DD');
+    const dateStr = record.date.toISOString().split('T')[0];
     if (!historyByDate[dateStr]) {
       historyByDate[dateStr] = [];
     }
@@ -165,7 +145,7 @@ export const getAttendanceSummary = catchAsyncError(async (req, res, next) => {
     {
       $group: {
         _id: {
-          date: { $dateToString: { format: "%Y-%m-%d", date: "$date", timezone: "+05:00" } },
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
           status: "$status"
         },
         count: { $sum: 1 }
@@ -191,8 +171,7 @@ export const getAttendanceSummary = catchAsyncError(async (req, res, next) => {
     summary: attendance
   });
 });
-
-// Get worker attendance with date filtering
+// Add this method to get worker attendance with date filtering
 export const getWorkerAttendanceByDate = catchAsyncError(async (req, res, next) => {
   const { workerId } = req.params;
   const { month, year } = req.query;
@@ -207,9 +186,10 @@ export const getWorkerAttendanceByDate = catchAsyncError(async (req, res, next) 
     return next(new ErrorHandler("Worker not found", 404));
   }
 
-  // Calculate date range for the month in Pakistan time
-  const startDate = moment.tz(`${year}-${month}-01`, 'Asia/Karachi').startOf('month').toDate();
-  const endDate = moment(startDate).tz('Asia/Karachi').endOf('month').toDate();
+  // Calculate date range for the month
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0);
+  endDate.setHours(23, 59, 59, 999);
 
   const attendance = await Attendance.find({
     worker: workerId,
