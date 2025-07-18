@@ -1,3 +1,4 @@
+import mongoose from "mongoose"; 
 import Attendance from "../models/Attendance.js";
 import Worker from "../models/Worker.js";
 import { catchAsyncError } from "../middleware/catchAsyncError.js";
@@ -132,10 +133,13 @@ export const getAttendanceSummary = catchAsyncError(async (req, res, next) => {
   const workers = await Worker.find({ supervisor: req.user._id });
   const workerIds = workers.map(worker => worker._id);
   
+  // Convert to ObjectIds
+  const objectIds = workerIds.map(id => new mongoose.Types.ObjectId(id));
+  
   const attendance = await Attendance.aggregate([
     {
       $match: {
-        worker: { $in: workerIds.map(id => mongoose.Types.ObjectId(id)) }
+        worker: { $in: objectIds }
       }
     },
     {
