@@ -334,6 +334,7 @@ router.get('/reports/resolved/:id',
 
 
 // Update the profile route
+// Update the profile route
 router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
   try {
     const supervisorId = req.user._id.toString();
@@ -344,9 +345,11 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       return res.json(cached);
     }
     
-    // Get supervisor profile
+    // Get supervisor profile as plain object
     const supervisor = await User.findById(supervisorId)
-      .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
+      .select('-password -tokenVersion -resetPasswordOTP -verificationCode')
+      .lean({ virtuals: true })
+      .then(doc => doc ? doc.toObject() : null);
     
     if (!supervisor) {
       return res.status(404).json({ message: 'Supervisor not found' });
@@ -368,12 +371,16 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       })
         .sort({ resolvedAt: -1 })
         .limit(10)
-        .populate('user', 'username profileImage'),
+        .populate('user', 'username profileImage')
+        .lean({ virtuals: true })
+        .then(docs => docs.map(doc => doc.toObject())),
       
       Report.find({ 
         assignedTo: supervisorObjId,
         status: 'in-progress'
-      }),
+      })
+        .lean({ virtuals: true })
+        .then(docs => docs.map(doc => doc.toObject())),
       
       Report.countDocuments({ 
         resolvedBy: supervisorObjId,
@@ -390,7 +397,7 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       ? Math.round((resolvedCount / totalHandled) * 100) 
       : 0;
     
-    // Weekly resolution stats - use UTC to avoid timezone issues
+    // Weekly resolution stats
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const weeklyStats = await Report.aggregate([
       {
@@ -402,7 +409,7 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       },
       {
         $group: {
-          _id: { $dayOfWeek: { date: "$resolvedAt", timezone: "+00:00" } },
+          _id: { $dayOfWeek: "$resolvedAt" },
           count: { $sum: 1 }
         }
       },
