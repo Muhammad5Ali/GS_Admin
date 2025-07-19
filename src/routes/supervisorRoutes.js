@@ -2,6 +2,7 @@ import express from 'express';
 import { isAuthenticated } from '../middleware/auth.js';
 import Report from '../models/Report.js';
 import User from '../models/User.js';
+import Worker from '../models/Worker.js';
 import { resolveReport,updateReportStatus,getResolvedReportDetails } from "../controllers/supervisorController.js";
 
 const router = express.Router();
@@ -211,6 +212,61 @@ router.get('/reports/resolved/:id',
 //     res.status(500).json({ message: 'Server error' });
 //   }
 // });
+// router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
+//   try {
+//     const supervisorId = req.user._id;
+    
+//     // Get supervisor profile
+//     const supervisor = await User.findById(supervisorId)
+//       .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
+    
+//     if (!supervisor) {
+//       return res.status(404).json({ message: 'Supervisor not found' });
+//     }
+    
+//     // Get reports resolved by this supervisor
+//     const resolvedReports = await Report.find({ 
+//       resolvedBy: supervisorId,
+//       status: 'resolved'
+//     })
+//       .sort({ resolvedAt: -1 })
+//       .limit(10)
+//       .populate('user', 'username profileImage');
+    
+//     // Get in-progress reports by this supervisor - FIXED
+//     const inProgressReports = await Report.find({ 
+//       assignedTo: supervisorId, // Changed to assignedTo
+//       status: 'in-progress'
+//     });
+    
+//     // Calculate stats
+//     const totalResolved = await Report.countDocuments({ 
+//       resolvedBy: supervisorId,
+//       status: 'resolved'
+//     });
+    
+//     const totalInProgress = inProgressReports.length;
+//     const totalHandled = totalResolved + totalInProgress;
+    
+//     // Calculate success rate
+//     const successRate = totalHandled > 0 
+//       ? Math.round((totalResolved / totalHandled) * 100) 
+//       : 0;
+    
+//     res.json({
+//       success: true,
+//       supervisor,
+//       resolvedReports,
+//       stats: {
+//         resolved: totalResolved,
+//         inProgress: totalInProgress,
+//         successRate
+//       }
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
 router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
   try {
     const supervisorId = req.user._id;
@@ -232,9 +288,9 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       .limit(10)
       .populate('user', 'username profileImage');
     
-    // Get in-progress reports by this supervisor - FIXED
+    // Get in-progress reports by this supervisor
     const inProgressReports = await Report.find({ 
-      assignedTo: supervisorId, // Changed to assignedTo
+      assignedTo: supervisorId,
       status: 'in-progress'
     });
     
@@ -251,6 +307,9 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
     const successRate = totalHandled > 0 
       ? Math.round((totalResolved / totalHandled) * 100) 
       : 0;
+
+    // NEW: Get worker count
+    const workerCount = await Worker.countDocuments({ supervisor: supervisorId });
     
     res.json({
       success: true,
@@ -259,12 +318,12 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       stats: {
         resolved: totalResolved,
         inProgress: totalInProgress,
-        successRate
+        successRate,
+        workerCount  // Add worker count to stats
       }
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
 export default router;

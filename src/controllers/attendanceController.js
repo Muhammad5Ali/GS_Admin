@@ -250,5 +250,3 @@ export const getAttendanceByDate = catchAsyncError(async (req, res, next) => {
     attendance
   });
 });
-
-// ... existing functions ...
