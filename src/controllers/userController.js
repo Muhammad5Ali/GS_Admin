@@ -295,6 +295,42 @@ export const registerSupervisor = catchAsyncError(async (req, res, next) => {
   });
 });
 
+export const registerAdmin = catchAsyncError(async (req, res, next) => {
+  const { username, email, password, secretKey } = req.body;
+  
+  // Validate secret key
+  if (secretKey !== process.env.ADMIN_SECRET_KEY) {
+    return next(new ErrorHandler("Invalid admin registration key", 401));
+  }
+
+  // Check for existing verified user
+  const existingUser = await User.findOne({ 
+    email,
+    accountVerified: true
+  });
+
+  if (existingUser) {
+    return next(new ErrorHandler("Email is already registered.", 400));
+  }
+
+  // Create admin profile
+  const profileImage = `https://api.dicebear.com/7.x/avataaars/png?seed=${username}`;
+  
+  const user = await User.create({
+    username,
+    email,
+    password,
+    profileImage,
+    role: 'admin',
+    accountVerified: true // Skip verification for admins
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Admin account created successfully',
+    userId: user._id
+  });
+});
 
 export const logout = catchAsyncError(async (req, res, next) => {
   // Clear token from response
