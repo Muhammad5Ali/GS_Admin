@@ -1,3 +1,4 @@
+  import mongoose from 'mongoose';
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth.js';
 import Report from '../models/Report.js';
