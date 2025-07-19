@@ -1,4 +1,4 @@
-  import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth.js';
 import Report from '../models/Report.js';
@@ -331,6 +331,9 @@ router.get('/reports/resolved/:id',
 //   }
 // });
 // Supervisor profile with caching and enhanced stats
+
+
+// Update the profile route
 router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
   try {
     const supervisorId = req.user._id.toString();
@@ -349,36 +352,35 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       return res.status(404).json({ message: 'Supervisor not found' });
     }
     
-    // Parallel fetching for better performance
+    // Convert to ObjectId for queries
+    const supervisorObjId = new mongoose.Types.ObjectId(supervisorId);
+    
+    // Parallel fetching
     const [
       resolvedReports,
       inProgressReports,
       resolvedCount,
       workerCount
     ] = await Promise.all([
-      // Recently resolved reports
       Report.find({ 
-        resolvedBy: supervisorId,
+        resolvedBy: supervisorObjId,
         status: 'resolved'
       })
         .sort({ resolvedAt: -1 })
         .limit(10)
         .populate('user', 'username profileImage'),
       
-      // In-progress reports
       Report.find({ 
-        assignedTo: supervisorId,
+        assignedTo: supervisorObjId,
         status: 'in-progress'
       }),
       
-      // Count of resolved reports
       Report.countDocuments({ 
-        resolvedBy: supervisorId,
+        resolvedBy: supervisorObjId,
         status: 'resolved'
       }),
       
-      // Worker count
-      Worker.countDocuments({ supervisor: supervisorId })
+      Worker.countDocuments({ supervisor: supervisorObjId })
     ]);
     
     // Calculate stats
@@ -388,26 +390,26 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
       ? Math.round((resolvedCount / totalHandled) * 100) 
       : 0;
     
-    // Weekly resolution stats
+    // Weekly resolution stats - use UTC to avoid timezone issues
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const weeklyStats = await Report.aggregate([
       {
         $match: {
-          resolvedBy: supervisorId,
+          resolvedBy: supervisorObjId,
           status: 'resolved',
           resolvedAt: { $gte: oneWeekAgo }
         }
       },
       {
         $group: {
-          _id: { $dayOfWeek: "$resolvedAt" },
+          _id: { $dayOfWeek: { date: "$resolvedAt", timezone: "+00:00" } },
           count: { $sum: 1 }
         }
       },
       { $sort: { "_id": 1 } }
     ]);
     
-    // Format day names for frontend
+    // Format day names
     const dayMap = {
       1: 'Sunday',
       2: 'Monday',
@@ -445,8 +447,7 @@ router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
     console.error('Supervisor profile error:', error);
     res.status(500).json({ 
       success: false,
-      message: 'Server error',
-      error: error.message 
+      message: 'Server error: ' + error.message
     });
   }
 });
