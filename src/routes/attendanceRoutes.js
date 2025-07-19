@@ -3,6 +3,7 @@ import {
   markAttendance, 
   getWorkerAttendance, 
   getTodaysAttendance,
+  getAttendanceByDate,
   getAttendanceHistory,
   getAttendanceSummary,
   getWorkerAttendanceByDate
@@ -17,6 +18,7 @@ router.use(isAuthenticated, isSupervisor);
 router.post("/", markAttendance);
 router.get("/worker/:workerId", getWorkerAttendance);
 router.get("/today", getTodaysAttendance);
+router.get("/by-date", getAttendanceByDate);
 router.get("/history", getAttendanceHistory);
 router.get("/summary", getAttendanceSummary);
 router.get("/worker/:workerId/by-date", getWorkerAttendanceByDate);

@@ -221,3 +221,34 @@ export const getWorkerAttendanceByDate = catchAsyncError(async (req, res, next) 
     attendance
   });
 });
+
+// Get attendance for a specific date
+export const getAttendanceByDate = catchAsyncError(async (req, res, next) => {
+  const { date } = req.query;
+  
+  if (!date) {
+    return next(new ErrorHandler("Date is required", 400));
+  }
+
+  // Convert to Pakistan time
+  const startDate = moment.tz(date, 'Asia/Karachi').startOf('day').toDate();
+  const endDate = moment(startDate).tz('Asia/Karachi').add(1, 'day').toDate();
+
+  const workers = await Worker.find({ supervisor: req.user._id });
+  const workerIds = workers.map(worker => worker._id);
+  
+  const attendance = await Attendance.find({
+    worker: { $in: workerIds },
+    date: { 
+      $gte: startDate,
+      $lt: endDate
+    }
+  }).populate("worker");
+
+  res.status(200).json({
+    success: true,
+    attendance
+  });
+});
+
+// ... existing functions ...
