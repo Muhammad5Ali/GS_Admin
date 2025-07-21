@@ -312,7 +312,8 @@ router.get("/:id", isAuthenticated, async (req, res) => {
     const report = await Report.findById(req.params.id)
       .populate('user', 'username profileImage')
       .populate('assignedTo', 'username profileImage')
-      .populate('resolvedBy', 'username profileImage');
+      .populate('resolvedBy', 'username profileImage')
+      .populate('permanentlyResolvedBy', 'username email profileImage');
 
     if (!report) {
       return res.status(404).json({ message: "Report not found" });
