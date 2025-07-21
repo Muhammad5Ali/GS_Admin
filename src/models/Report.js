@@ -53,9 +53,9 @@
       enum: ['standard', 'hazardous', 'large'],
       default: 'standard'
     },
-    status: {
+ status: {
   type: String,
-  enum: ['pending', 'in-progress', 'resolved'],
+  enum: ['pending', 'in-progress', 'resolved', 'permanent-resolved'],
   default: 'pending'
 },
 resolvedImage: String,
@@ -76,6 +76,12 @@ resolvedImage: String,
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   },
+  distanceToReported: Number, 
+permanentlyResolvedAt: Date,
+permanentlyResolvedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User"
+},
   assignedAt: Date,
    resolvedAt: Date
   }, {
