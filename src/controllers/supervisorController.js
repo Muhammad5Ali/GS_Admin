@@ -156,7 +156,7 @@ export const getReportDetails = catchAsyncError(async (req, res, next) => {
     .populate('resolvedBy', 'username profileImage')
     .populate('rejectedBy', 'username email profileImage')
     .populate('permanentlyResolvedBy', 'username email profileImage')
-    .populate('markedOutOfScopeBy', 'username email profileImage');
+    .populate('outOfScopeBy', 'username email profileImage');
 
   if (!report) {
     return next(new ErrorHandler("Report not found", 404));
