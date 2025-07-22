@@ -279,19 +279,6 @@ router.get('/reports/rejected',
   isSupervisor, 
   getRejectedReports
 );
-
-// Get any report details (including rejected)
-router.get('/reports/:id', 
-  isAuthenticated, 
-  isSupervisor, 
-  getReportDetails
-);
-router.put(
-  '/reports/:id/out-of-scope', 
-  isAuthenticated, 
-  isSupervisor, 
-  markAsOutOfScope
-);
 // route for fetching out-of-scope reports
 router.get('/reports/out-of-scope', 
   isAuthenticated, 
@@ -325,4 +312,18 @@ router.get('/reports/out-of-scope',
     });
   })
 );
+
+// Get any report details (including rejected)
+router.get('/reports/:id', 
+  isAuthenticated, 
+  isSupervisor, 
+  getReportDetails
+);
+router.put(
+  '/reports/:id/out-of-scope', 
+  isAuthenticated, 
+  isSupervisor, 
+  markAsOutOfScope
+);
+
 export default router;
