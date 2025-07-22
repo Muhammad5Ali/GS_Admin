@@ -171,6 +171,39 @@ export const getReportDetails = catchAsyncError(async (req, res, next) => {
     report
   });
 });
+
+// export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
+//   const { reason } = req.body;
+//   const report = await Report.findById(req.params.id);
+  
+//   if (!report) {
+//     return next(new ErrorHandler("Report not found", 404));
+//   }
+  
+//   // Validate allowed transitions
+//   if (report.status !== 'pending') {
+//     return next(new ErrorHandler(
+//       "Only pending reports can be marked as out-of-scope", 
+//       400
+//     ));
+//   }
+  
+//   // Update report
+//   report.status = 'out-of-scope';
+//   report.outOfScopeReason = reason;
+//   report.markedOutOfScopeAt = Date.now();
+//   report.markedOutOfScopeBy = req.user._id;
+  
+//   await report.save();
+  
+//   res.status(200).json({
+//     success: true,
+//     message: "Report marked as out of scope",
+//     report
+//   });
+// });
+
+
 export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
   const { reason } = req.body;
   const report = await Report.findById(req.params.id);
@@ -179,7 +212,7 @@ export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Report not found", 404));
   }
   
-  // Validate allowed transitions
+  // Only allow marking pending reports
   if (report.status !== 'pending') {
     return next(new ErrorHandler(
       "Only pending reports can be marked as out-of-scope", 
@@ -187,11 +220,11 @@ export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
     ));
   }
   
-  // Update report
+  // Update report fields to match your schema
   report.status = 'out-of-scope';
   report.outOfScopeReason = reason;
-  report.markedOutOfScopeAt = Date.now();
-  report.markedOutOfScopeBy = req.user._id;
+  report.outOfScopeAt = Date.now();         // matches schema’s outOfScopeAt
+  report.outOfScopeBy = req.user._id;       // matches schema’s outOfScopeBy
   
   await report.save();
   
