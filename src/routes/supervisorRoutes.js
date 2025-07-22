@@ -3,6 +3,7 @@ import { isAuthenticated } from '../middleware/auth.js';
 import Report from '../models/Report.js';
 import User from '../models/User.js';
 import Worker from '../models/Worker.js';
+import { catchAsyncError } from '../middleware/catchAsyncError.js';
 import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,getReportDetails,markAsOutOfScope } from "../controllers/supervisorController.js";
 
 
@@ -290,5 +291,38 @@ router.put(
   isAuthenticated, 
   isSupervisor, 
   markAsOutOfScope
+);
+// route for fetching out-of-scope reports
+router.get('/reports/out-of-scope', 
+  isAuthenticated, 
+  isSupervisor, 
+  catchAsyncError(async (req, res) => {
+    const supervisorId = req.user._id;
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const reports = await Report.find({
+      status: 'out-of-scope',
+      markedOutOfScopeBy: supervisorId
+    })
+      .sort({ outOfScopeAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populate('user', 'username profileImage')
+      .populate('markedOutOfScopeBy', 'username');
+
+    const total = await Report.countDocuments({
+      status: 'out-of-scope',
+      markedOutOfScopeBy: supervisorId
+    });
+
+    res.status(200).json({
+      success: true,
+      reports,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page)
+    });
+  })
 );
 export default router;

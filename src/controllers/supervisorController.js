@@ -155,7 +155,8 @@ export const getReportDetails = catchAsyncError(async (req, res, next) => {
     .populate('assignedTo', 'username profileImage')
     .populate('resolvedBy', 'username profileImage')
     .populate('rejectedBy', 'username email profileImage')
-    .populate('permanentlyResolvedBy', 'username email profileImage');
+    .populate('permanentlyResolvedBy', 'username email profileImage')
+    .populate('markedOutOfScopeBy', 'username email profileImage');
 
   if (!report) {
     return next(new ErrorHandler("Report not found", 404));
@@ -179,9 +180,9 @@ export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
   }
   
   // Validate allowed transitions
-  if (report.status !== 'pending' && report.status !== 'in-progress') {
+  if (report.status !== 'pending') {
     return next(new ErrorHandler(
-      "Only pending or in-progress reports can be marked as out-of-scope", 
+      "Only pending reports can be marked as out-of-scope", 
       400
     ));
   }
