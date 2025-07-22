@@ -288,19 +288,20 @@ router.get('/reports/out-of-scope',
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
+    // CORRECTED FIELD NAME: outOfScopeBy instead of markedOutOfScopeBy
     const reports = await Report.find({
       status: 'out-of-scope',
-      markedOutOfScopeBy: supervisorId
+      outOfScopeBy: supervisorId
     })
       .sort({ outOfScopeAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
       .populate('user', 'username profileImage')
-      .populate('markedOutOfScopeBy', 'username');
+      .populate('outOfScopeBy', 'username'); // Also update population
 
     const total = await Report.countDocuments({
       status: 'out-of-scope',
-      markedOutOfScopeBy: supervisorId
+      outOfScopeBy: supervisorId // CORRECTED HERE TOO
     });
 
     res.status(200).json({
