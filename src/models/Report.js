@@ -64,6 +64,7 @@ outOfScopeBy: {
   ref: "User"
 },
 outOfScopeAt: Date,
+outOfScopeAt: Date,
 resolvedImage: String,
   resolvedPublicId: String,
   resolvedLocation: {
