@@ -14,8 +14,13 @@ export const getAllReports = catchAsyncError(async (req, res, next) => {
   
   const skip = (page - 1) * limit;
   
-  const filter = {};
-  if (status) filter.status = status;
+  // const filter = {};
+  // if (status) filter.status = status;
+    const filter = {};
+  // Add 'rejected' as valid status
+  if (status && ['pending', 'in-progress', 'resolved', 'permanent-resolved', 'rejected'].includes(status)) {
+    filter.status = status;
+  }
   if (type) filter.reportType = type;
   
   // Add search functionality - NOW 'search' IS DEFINED
@@ -86,12 +91,63 @@ export const getSupervisors = catchAsyncError(async (req, res, next) => {
 });
 
 // Get dashboard stats
+// export const getDashboardStats = catchAsyncError(async (req, res, next) => {
+//   const [totalReports, resolvedReports, totalUsers, totalSupervisors] = await Promise.all([
+//     Report.countDocuments(),
+//     Report.countDocuments({ status: 'resolved' }),
+//     User.countDocuments({ role: 'user' }),
+//     User.countDocuments({ role: 'supervisor' })
+//   ]);
+
+//   res.status(200).json({
+//     success: true,
+//     stats: {
+//       totalReports,
+//       resolvedReports,
+//       resolutionRate: totalReports ? (resolvedReports / totalReports * 100).toFixed(1) : 0,
+//       totalUsers,
+//       totalSupervisors
+//     }
+//   });
+// });
+// export const getDashboardStats = catchAsyncError(async (req, res, next) => {
+//   const [totalReports, resolvedReports, totalUsers, totalSupervisors, rejectedReports] = await Promise.all([
+//     Report.countDocuments(),
+//     Report.countDocuments({ status: 'resolved' }),
+//     User.countDocuments({ role: 'user' }),
+//     User.countDocuments({ role: 'supervisor' }),
+//     Report.countDocuments({ status: 'rejected' }) // Add rejected count
+//   ]);
+
+//   res.status(200).json({
+//     success: true,
+//     stats: {
+//       totalReports,
+//       resolvedReports,
+//       rejectedReports,
+//       resolutionRate: totalReports ? (resolvedReports / totalReports * 100).toFixed(1) : 0,
+//       totalUsers,
+//       totalSupervisors
+//     }
+//   });
+// });
 export const getDashboardStats = catchAsyncError(async (req, res, next) => {
-  const [totalReports, resolvedReports, totalUsers, totalSupervisors] = await Promise.all([
+  const [
+    totalReports, 
+    resolvedReports, 
+    totalUsers, 
+    totalSupervisors,
+    pendingReports,
+    rejectedReports,
+    permanentResolvedReports
+  ] = await Promise.all([
     Report.countDocuments(),
     Report.countDocuments({ status: 'resolved' }),
     User.countDocuments({ role: 'user' }),
-    User.countDocuments({ role: 'supervisor' })
+    User.countDocuments({ role: 'supervisor' }),
+    Report.countDocuments({ status: 'pending' }),
+    Report.countDocuments({ status: 'rejected' }),
+    Report.countDocuments({ status: 'permanent-resolved' })
   ]);
 
   res.status(200).json({
@@ -99,13 +155,15 @@ export const getDashboardStats = catchAsyncError(async (req, res, next) => {
     stats: {
       totalReports,
       resolvedReports,
+      rejectedReports,
+      pendingReports,
+      permanentResolvedReports,
       resolutionRate: totalReports ? (resolvedReports / totalReports * 100).toFixed(1) : 0,
       totalUsers,
       totalSupervisors
     }
   });
 });
-// Add these functions to adminController.js
 
 // Get reports overview data (last 7 days)
 export const getReportsOverview = catchAsyncError(async (req, res, next) => {
@@ -271,30 +329,58 @@ export const getUserActivity = catchAsyncError(async (req, res, next) => {
   res.status(200).json({ success: true, data: results });
 });
 // Get report status counts
-export const getReportStatusCounts = catchAsyncError(async (req, res, next) => {
- try {
-   const [pending, inProgress, resolved, permanentResolved] = await Promise.all([
-    Report.countDocuments({ status: 'pending' }),
-    Report.countDocuments({ status: 'in-progress' }),
-    Report.countDocuments({ status: 'resolved' }),
-    Report.countDocuments({ status: 'permanent-resolved' })
-  ]);
+// export const getReportStatusCounts = catchAsyncError(async (req, res, next) => {
+//  try {
+//    const [pending, inProgress, resolved, permanentResolved] = await Promise.all([
+//     Report.countDocuments({ status: 'pending' }),
+//     Report.countDocuments({ status: 'in-progress' }),
+//     Report.countDocuments({ status: 'resolved' }),
+//     Report.countDocuments({ status: 'permanent-resolved' }),
+//     Report.countDocuments({ status: 'rejected' }) 
+//   ]);
 
-  res.status(200).json({
-    success: true,
-    counts: {
-      pending,
-      inProgress,
-      resolved,
-      permanentResolved, // Add this
-      total: pending + inProgress + resolved + permanentResolved 
-    }
-  });
+//   res.status(200).json({
+//     success: true,
+//     counts: {
+//       pending,
+//       inProgress,
+//       resolved,
+//       permanentResolved,
+//       rejected,
+//       total: pending + inProgress + resolved + rejected + permanentResolved 
+//     }
+//   });
   
- } catch (error) {
-      console.error('Error in getReportStatusCounts:', err);
+//  } catch (error) {
+//       console.error('Error in getReportStatusCounts:', err);
+//     return next(new ErrorHandler('Failed to fetch status counts', 500));
+//  }
+// });
+export const getReportStatusCounts = catchAsyncError(async (req, res, next) => {
+  try {
+    const [pending, inProgress, resolved, permanentResolved, rejected] = await Promise.all([
+      Report.countDocuments({ status: 'pending' }),
+      Report.countDocuments({ status: 'in-progress' }),
+      Report.countDocuments({ status: 'resolved' }),
+      Report.countDocuments({ status: 'permanent-resolved' }),
+      Report.countDocuments({ status: 'rejected' }) // Add rejected count
+    ]);
+
+    res.status(200).json({
+      success: true,
+      counts: {
+        pending,
+        inProgress,
+        resolved,
+        permanentResolved,
+        rejected, // Add this
+        total: pending + inProgress + resolved + permanentResolved + rejected 
+      }
+    });
+  } catch (error) {
+    console.error('Error in getReportStatusCounts:', error);
     return next(new ErrorHandler('Failed to fetch status counts', 500));
- }
+  }
 });
 
 export const createSupervisor = catchAsyncError(async (req, res, next) => {
@@ -447,3 +533,33 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function deg2rad(deg) {
   return deg * (Math.PI/180);
 }
+// Reject report with reason
+export const rejectReport = catchAsyncError(async (req, res, next) => {
+  const reportId = req.params.id;
+  const adminId = req.user._id;
+  const { reason } = req.body;
+
+  const report = await Report.findById(reportId);
+  
+  if (!report) {
+    return next(new ErrorHandler("Report not found", 404));
+  }
+  
+  if (report.status !== 'resolved') {
+    return next(new ErrorHandler("Report must be resolved first", 400));
+  }
+  
+  // Update report
+  report.status = 'rejected';
+  report.rejectionReason = reason;
+  report.rejectedAt = new Date();
+  report.rejectedBy = adminId;
+  
+  await report.save();
+  
+  res.status(200).json({
+    success: true,
+    message: "Report rejected",
+    report
+  });
+});

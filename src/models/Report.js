@@ -55,7 +55,7 @@
     },
  status: {
   type: String,
-  enum: ['pending', 'in-progress', 'resolved', 'permanent-resolved'],
+  enum: ['pending', 'in-progress', 'resolved','rejected', 'permanent-resolved'],
   default: 'pending'
 },
 resolvedImage: String,
@@ -83,7 +83,13 @@ permanentlyResolvedBy: {
   ref: "User"
 },
   assignedAt: Date,
-   resolvedAt: Date
+   resolvedAt: Date,
+   rejectionReason: String,
+rejectedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User"
+},
+rejectedAt: Date,
   }, {
     timestamps: true
   });

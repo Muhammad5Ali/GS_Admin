@@ -9,7 +9,8 @@ import {
   getReportStatusCounts,
   createSupervisor,
   deleteSupervisor,
-  markAsPermanentResolved
+  markAsPermanentResolved,
+  rejectReport
 } from '../controllers/adminController.js';
 import { isAuthenticated, isAdmin } from '../middleware/auth.js';
 
@@ -31,6 +32,12 @@ router.patch(
   isAuthenticated,
   isAdmin,
   markAsPermanentResolved
+);
+router.post(
+  '/reports/:id/reject',
+  isAuthenticated,
+  isAdmin,
+  rejectReport
 );
 
 export default router;
