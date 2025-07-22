@@ -3,7 +3,7 @@ import { isAuthenticated } from '../middleware/auth.js';
 import Report from '../models/Report.js';
 import User from '../models/User.js';
 import Worker from '../models/Worker.js';
-import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,getReportDetails } from "../controllers/supervisorController.js";
+import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,getReportDetails,markAsOutOfScope } from "../controllers/supervisorController.js";
 
 
 const router = express.Router();
@@ -284,5 +284,11 @@ router.get('/reports/:id',
   isAuthenticated, 
   isSupervisor, 
   getReportDetails
+);
+router.put(
+  '/reports/:id/out-of-scope', 
+  isAuthenticated, 
+  isSupervisor, 
+  markAsOutOfScope
 );
 export default router;

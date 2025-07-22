@@ -53,11 +53,17 @@
       enum: ['standard', 'hazardous', 'large'],
       default: 'standard'
     },
- status: {
+status: {
   type: String,
-  enum: ['pending', 'in-progress', 'resolved','rejected', 'permanent-resolved'],
+  enum: ['pending', 'in-progress', 'resolved', 'rejected', 'permanent-resolved', 'out-of-scope'],
   default: 'pending'
 },
+outOfScopeReason: String,
+outOfScopeBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User"
+},
+outOfScopeAt: Date,
 resolvedImage: String,
   resolvedPublicId: String,
   resolvedLocation: {

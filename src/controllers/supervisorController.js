@@ -148,7 +148,7 @@ export const getRejectedReports = catchAsyncError(async (req, res, next) => {
   });
 });
 
-// NEW: Get any report details for supervisor
+
 export const getReportDetails = catchAsyncError(async (req, res, next) => {
   const report = await Report.findById(req.params.id)
     .populate('user', 'username email profileImage')
@@ -160,9 +160,43 @@ export const getReportDetails = catchAsyncError(async (req, res, next) => {
   if (!report) {
     return next(new ErrorHandler("Report not found", 404));
   }
+  // Ensure rejectionReason exists
+  if (!report.rejectionReason) {
+    report.rejectionReason = "No reason provided";
+  }
 
   res.status(200).json({
     success: true,
+    report
+  });
+});
+export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
+  const { reason } = req.body;
+  const report = await Report.findById(req.params.id);
+  
+  if (!report) {
+    return next(new ErrorHandler("Report not found", 404));
+  }
+  
+  // Validate allowed transitions
+  if (report.status !== 'pending' && report.status !== 'in-progress') {
+    return next(new ErrorHandler(
+      "Only pending or in-progress reports can be marked as out-of-scope", 
+      400
+    ));
+  }
+  
+  // Update report
+  report.status = 'out-of-scope';
+  report.outOfScopeReason = reason;
+  report.markedOutOfScopeAt = Date.now();
+  report.markedOutOfScopeBy = req.user._id;
+  
+  await report.save();
+  
+  res.status(200).json({
+    success: true,
+    message: "Report marked as out of scope",
     report
   });
 });
