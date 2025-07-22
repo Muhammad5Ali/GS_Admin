@@ -563,3 +563,13 @@ export const rejectReport = catchAsyncError(async (req, res, next) => {
     report
   });
 });
+
+// Helper to populate report details
+export const populateReportDetails = (report) => {
+  return report
+    .populate('user', 'username email profileImage')
+    .populate('assignedTo', 'username profileImage')
+    .populate('resolvedBy', 'username profileImage')
+    .populate('rejectedBy', 'username email profileImage')
+    .populate('permanentlyResolvedBy', 'username email profileImage');
+};

@@ -118,3 +118,51 @@ export const getResolvedReportDetails = catchAsyncError(async (req, res, next) =
     report
   });
 });
+
+export const getRejectedReports = catchAsyncError(async (req, res, next) => {
+  const supervisorId = req.user._id;
+  const { page = 1, limit = 10 } = req.query;
+  const skip = (page - 1) * limit;
+
+  const reports = await Report.find({
+    resolvedBy: supervisorId,
+    status: 'rejected'
+  })
+    .sort({ rejectedAt: -1 })
+    .skip(skip)
+    .limit(parseInt(limit))
+    .populate('user', 'username profileImage')
+    .populate('rejectedBy', 'username email');
+
+  const total = await Report.countDocuments({
+    resolvedBy: supervisorId,
+    status: 'rejected'
+  });
+
+  res.status(200).json({
+    success: true,
+    reports,
+    total,
+    totalPages: Math.ceil(total / limit),
+    currentPage: parseInt(page)
+  });
+});
+
+// NEW: Get any report details for supervisor
+export const getReportDetails = catchAsyncError(async (req, res, next) => {
+  const report = await Report.findById(req.params.id)
+    .populate('user', 'username email profileImage')
+    .populate('assignedTo', 'username profileImage')
+    .populate('resolvedBy', 'username profileImage')
+    .populate('rejectedBy', 'username email profileImage')
+    .populate('permanentlyResolvedBy', 'username email profileImage');
+
+  if (!report) {
+    return next(new ErrorHandler("Report not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    report
+  });
+});

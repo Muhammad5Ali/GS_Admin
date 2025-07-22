@@ -13,6 +13,7 @@ import {
   rejectReport
 } from '../controllers/adminController.js';
 import { isAuthenticated, isAdmin } from '../middleware/auth.js';
+import { catchAsyncError } from '../middleware/catchAsyncError.js';
 
 const router = express.Router();
 
@@ -38,6 +39,31 @@ router.post(
   isAuthenticated,
   isAdmin,
   rejectReport
+);
+// Add to existing routes
+router.get('/reports/rejected', 
+  isAuthenticated, 
+  isAdmin, 
+  catchAsyncError(async (req, res, next) => {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+    
+    const reports = await Report.find({ status: 'rejected' })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .populateReportDetails() // Using our helper
+      .sort({ rejectedAt: -1 });
+
+    const total = await Report.countDocuments({ status: 'rejected' });
+
+    res.status(200).json({
+      success: true,
+      reports,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page)
+    });
+  })
 );
 
 export default router;
