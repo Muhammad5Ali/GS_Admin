@@ -87,7 +87,8 @@ export const updateReportStatus = catchAsyncError(async (req, res, next) => {
   // Assign report to supervisor when status changes to in-progress
   if (status === 'in-progress') {
     report.assignedTo = req.user._id;
-    report.assignedAt = Date.now(); // Add assignment timestamp
+    report.assignedAt = Date.now() // Add assignment timestamp
+    report.assignedMsg = req.body.message; 
   }
 
   report.status = status;
