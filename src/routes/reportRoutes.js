@@ -262,6 +262,52 @@ router.get("/user", isAuthenticated, async (req, res) => {
   }
 });
 
+// router.delete("/:id", isAuthenticated, async (req, res) => {
+//   try {
+//     const report = await Report.findById(req.params.id);
+//     if (!report) {
+//       return res.status(404).json({ message: "Report not found" });
+//     }
+
+//     if (report.user.toString() !== req.user._id.toString()) {
+//       return res.status(401).json({ message: "Unauthorized" });
+//     }
+
+//     if (report.publicId) {
+//       try {
+//         await cloudinary.uploader.destroy(report.publicId);
+//       } catch (deleteError) {
+//         console.error("Cloudinary deletion error:", deleteError);
+//       }
+//     }
+
+//     const pointsMap = {
+//       standard: 10,
+//       hazardous: 20,
+//       large: 15
+//     };
+    
+//     const pointsToDeduct = report.reportType 
+//       ? pointsMap[report.reportType] || 10 
+//       : 10;
+
+//     await User.findByIdAndUpdate(req.user._id, {
+//       $inc: { 
+//         reportCount: -1, 
+//         points: -pointsToDeduct 
+//       }
+//     });
+
+//     await report.deleteOne();
+//     res.json({ message: "Report deleted successfully" });
+    
+//   } catch (error) {
+//     console.error("Delete Report Error:", error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// });
+// Get single report with full workflow details
+
 router.delete("/:id", isAuthenticated, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id);
@@ -269,35 +315,28 @@ router.delete("/:id", isAuthenticated, async (req, res) => {
       return res.status(404).json({ message: "Report not found" });
     }
 
-    if (report.user.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    if (report.publicId) {
-      try {
-        await cloudinary.uploader.destroy(report.publicId);
-      } catch (deleteError) {
-        console.error("Cloudinary deletion error:", deleteError);
-      }
-    }
-
-    const pointsMap = {
-      standard: 10,
-      hazardous: 20,
-      large: 15
-    };
+    // Find the user who created the report
+    const user = await User.findById(report.user);
     
-    const pointsToDeduct = report.reportType 
-      ? pointsMap[report.reportType] || 10 
-      : 10;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    await User.findByIdAndUpdate(req.user._id, {
-      $inc: { 
-        reportCount: -1, 
-        points: -pointsToDeduct 
-      }
-    });
+    // Calculate points to deduct
+    const pointsMap = { standard: 10, hazardous: 20, large: 15 };
+    const pointsToDeduct = pointsMap[report.reportType] || 10;
 
+    // Update user counts and points
+    user.reportCount = Math.max(0, user.reportCount - 1);
+    user.points = Math.max(0, user.points - pointsToDeduct);
+    
+    await user.save();
+
+    // Delete the report and cloudinary image
+    if (report.publicId) {
+      await cloudinary.uploader.destroy(report.publicId);
+    }
+    
     await report.deleteOne();
     res.json({ message: "Report deleted successfully" });
     
@@ -306,7 +345,8 @@ router.delete("/:id", isAuthenticated, async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
-// Get single report with full workflow details
+
+
 router.get("/:id", isAuthenticated, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
