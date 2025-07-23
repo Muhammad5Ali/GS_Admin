@@ -314,7 +314,8 @@ router.get("/:id", isAuthenticated, async (req, res) => {
       .populate('assignedTo', 'username profileImage')
       .populate('resolvedBy', 'username profileImage')
       .populate('permanentlyResolvedBy', 'username email profileImage')
-      .populate('rejectedBy', 'username email profileImage');
+      .populate('rejectedBy', 'username email profileImage')
+      .populate('outOfScopeBy', 'username email profileImage');
 
     if (!report) {
       return res.status(404).json({ message: "Report not found" });
