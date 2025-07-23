@@ -88,7 +88,7 @@ export const updateReportStatus = catchAsyncError(async (req, res, next) => {
   if (status === 'in-progress') {
     report.assignedTo = req.user._id;
     report.assignedAt = Date.now() // Add assignment timestamp
-    report.assignedMsg = req.body.message; 
+    report.assignedMsg = req.body.assignedMsg || "No message provided"; 
   }
 
   report.status = status;
