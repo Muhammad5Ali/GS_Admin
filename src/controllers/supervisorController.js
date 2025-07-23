@@ -152,6 +152,7 @@ export const getRejectedReports = catchAsyncError(async (req, res, next) => {
 
 export const getReportDetails = catchAsyncError(async (req, res, next) => {
   const report = await Report.findById(req.params.id)
+    .select('+assignedMsg')
     .populate('user', 'username email profileImage')
     .populate('assignedTo', 'username email profileImage')
     .populate('resolvedBy', 'username email profileImage')

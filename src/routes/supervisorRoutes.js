@@ -53,7 +53,8 @@ router.get('/reports/in-progress', isAuthenticated, isSupervisor, async (req, re
       .sort({ updatedAt: -1 }) // Sort by most recently updated
       .skip(skip)
       .limit(limit)
-      .populate('user', 'username profileImage');
+      .populate('user', 'username profileImage')
+       .select('+assignedMsg'); 
 
     const totalInProgress = await Report.countDocuments({ status: 'in-progress' });
 
@@ -121,6 +122,9 @@ router.put('/reports/:id/status',
   isSupervisor, 
   updateReportStatus
 );
+
+
+
 router.put('/reports/:id/resolve', isAuthenticated, isSupervisor, resolveReport);
 router.get('/reports/resolved/:id', 
   isAuthenticated, 
