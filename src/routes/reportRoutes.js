@@ -351,8 +351,8 @@ router.get("/:id", isAuthenticated, async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
       .populate('user', 'username profileImage')
-      .populate('assignedTo', 'username profileImage')
-      .populate('resolvedBy', 'username profileImage')
+      .populate('assignedTo', 'username email profileImage')
+      .populate('resolvedBy', 'username email profileImage')
       .populate('permanentlyResolvedBy', 'username email profileImage')
       .populate('rejectedBy', 'username email profileImage')
       .populate('outOfScopeBy', 'username email profileImage');
