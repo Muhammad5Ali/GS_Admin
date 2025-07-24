@@ -4,7 +4,7 @@ import Report from '../models/Report.js';
 import User from '../models/User.js';
 import Worker from '../models/Worker.js';
 import { catchAsyncError } from '../middleware/catchAsyncError.js';
-import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,getReportDetails,markAsOutOfScope } from "../controllers/supervisorController.js";
+import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,getReportDetails,markAsOutOfScope,getSupervisorProfile } from "../controllers/supervisorController.js";
 
 
 const router = express.Router();
@@ -123,8 +123,6 @@ router.put('/reports/:id/status',
   updateReportStatus
 );
 
-
-
 router.put('/reports/:id/resolve', isAuthenticated, isSupervisor, resolveReport);
 router.get('/reports/resolved/:id', 
   isAuthenticated, 
@@ -153,6 +151,15 @@ router.get('/reports/resolved/:id',
 //       .limit(10)
 //       .populate('user', 'username profileImage');
     
+//     // NEW: Get rejected reports by this supervisor
+//     const rejectedReports = await Report.find({ 
+//       resolvedBy: supervisorId,
+//       status: 'rejected'
+//     })
+//       .sort({ rejectedAt: -1 })
+//       .limit(10)
+//       .populate('user', 'username profileImage');
+    
 //     // Get in-progress reports by this supervisor
 //     const inProgressReports = await Report.find({ 
 //       assignedTo: supervisorId,
@@ -165,6 +172,12 @@ router.get('/reports/resolved/:id',
 //       status: 'resolved'
 //     });
     
+//     // NEW: Add rejected count
+//     const totalRejected = await Report.countDocuments({ 
+//       resolvedBy: supervisorId,
+//       status: 'rejected'
+//     });
+    
 //     const totalInProgress = inProgressReports.length;
 //     const totalHandled = totalResolved + totalInProgress;
     
@@ -173,18 +186,20 @@ router.get('/reports/resolved/:id',
 //       ? Math.round((totalResolved / totalHandled) * 100) 
 //       : 0;
 
-//     // NEW: Get worker count
+//     // Get worker count
 //     const workerCount = await Worker.countDocuments({ supervisor: supervisorId });
     
 //     res.json({
 //       success: true,
 //       supervisor,
 //       resolvedReports,
+//       rejectedReports, // NEW: Add rejected reports
 //       stats: {
 //         resolved: totalResolved,
+//         rejected: totalRejected, // NEW: Add rejected count
 //         inProgress: totalInProgress,
 //         successRate,
-//         workerCount  // Add worker count to stats
+//         workerCount
 //       }
 //     });
 //   } catch (error) {
@@ -192,90 +207,11 @@ router.get('/reports/resolved/:id',
 //   }
 // });
 
-
-// Get rejected reports for supervisor
-
-
-// Updated profile route with rejected reports
-
-
-
-router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
-  try {
-    const supervisorId = req.user._id;
-    
-    // Get supervisor profile
-    const supervisor = await User.findById(supervisorId)
-      .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
-    
-    if (!supervisor) {
-      return res.status(404).json({ message: 'Supervisor not found' });
-    }
-    
-    // Get reports resolved by this supervisor
-    const resolvedReports = await Report.find({ 
-      resolvedBy: supervisorId,
-      status: 'resolved'
-    })
-      .sort({ resolvedAt: -1 })
-      .limit(10)
-      .populate('user', 'username profileImage');
-    
-    // NEW: Get rejected reports by this supervisor
-    const rejectedReports = await Report.find({ 
-      resolvedBy: supervisorId,
-      status: 'rejected'
-    })
-      .sort({ rejectedAt: -1 })
-      .limit(10)
-      .populate('user', 'username profileImage');
-    
-    // Get in-progress reports by this supervisor
-    const inProgressReports = await Report.find({ 
-      assignedTo: supervisorId,
-      status: 'in-progress'
-    });
-    
-    // Calculate stats
-    const totalResolved = await Report.countDocuments({ 
-      resolvedBy: supervisorId,
-      status: 'resolved'
-    });
-    
-    // NEW: Add rejected count
-    const totalRejected = await Report.countDocuments({ 
-      resolvedBy: supervisorId,
-      status: 'rejected'
-    });
-    
-    const totalInProgress = inProgressReports.length;
-    const totalHandled = totalResolved + totalInProgress;
-    
-    // Calculate success rate
-    const successRate = totalHandled > 0 
-      ? Math.round((totalResolved / totalHandled) * 100) 
-      : 0;
-
-    // Get worker count
-    const workerCount = await Worker.countDocuments({ supervisor: supervisorId });
-    
-    res.json({
-      success: true,
-      supervisor,
-      resolvedReports,
-      rejectedReports, // NEW: Add rejected reports
-      stats: {
-        resolved: totalResolved,
-        rejected: totalRejected, // NEW: Add rejected count
-        inProgress: totalInProgress,
-        successRate,
-        workerCount
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+router.get('/profile', 
+  isAuthenticated, 
+  isSupervisor, 
+  getSupervisorProfile  // Use controller function
+);
 
 
 router.get('/reports/rejected', 
@@ -283,8 +219,6 @@ router.get('/reports/rejected',
   isSupervisor, 
   getRejectedReports
 );
-
-
 // Add this correct route:
 router.get('/reports/out-of-scope', 
   isAuthenticated, 
@@ -318,7 +252,6 @@ router.get('/reports/out-of-scope',
     });
   })
 );
-
 // Get any report details (including rejected)
 router.get('/reports/:id', 
   isAuthenticated, 

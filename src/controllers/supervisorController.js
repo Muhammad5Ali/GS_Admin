@@ -149,7 +149,6 @@ export const getRejectedReports = catchAsyncError(async (req, res, next) => {
   });
 });
 
-
 export const getReportDetails = catchAsyncError(async (req, res, next) => {
   const report = await Report.findById(req.params.id)
     .select('+assignedMsg')
@@ -234,5 +233,78 @@ export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
     success: true,
     message: "Report marked as out of scope",
     report
+  });
+});
+
+// Add this new controller function at the bottom
+export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
+  const supervisorId = req.user._id;
+  
+  // Get supervisor profile
+  const supervisor = await User.findById(supervisorId)
+    .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
+  
+  if (!supervisor) {
+    return next(new ErrorHandler("Supervisor not found", 404));
+  }
+  
+  // Get reports resolved by this supervisor
+  const resolvedReports = await Report.find({ 
+    resolvedBy: supervisorId,
+    status: 'resolved'
+  })
+    .sort({ resolvedAt: -1 })
+    .limit(10)
+    .populate('user', 'username profileImage');
+  
+  // Get rejected reports by this supervisor
+  const rejectedReports = await Report.find({ 
+    resolvedBy: supervisorId,
+    status: 'rejected'
+  })
+    .sort({ rejectedAt: -1 })
+    .limit(10)
+    .populate('user', 'username profileImage');
+  
+  // Get in-progress reports by this supervisor
+  const inProgressReports = await Report.find({ 
+    assignedTo: supervisorId,
+    status: 'in-progress'
+  });
+  
+  // Calculate stats
+  const totalResolved = await Report.countDocuments({ 
+    resolvedBy: supervisorId,
+    status: 'resolved'
+  });
+  
+  const totalRejected = await Report.countDocuments({ 
+    resolvedBy: supervisorId,
+    status: 'rejected'
+  });
+  
+  const totalInProgress = inProgressReports.length;
+  const totalHandled = totalResolved + totalRejected;
+  
+  // Calculate success rate (considering rejections)
+  const successRate = totalHandled > 0 
+    ? Math.round((totalResolved / totalHandled) * 100) 
+    : 0;
+
+  // Get worker count
+  const workerCount = await Worker.countDocuments({ supervisor: supervisorId });
+  
+  res.status(200).json({
+    success: true,
+    supervisor,
+    resolvedReports,
+    rejectedReports,
+    stats: {
+      resolved: totalResolved,
+      rejected: totalRejected,
+      inProgress: totalInProgress,
+      successRate,
+      workerCount
+    }
   });
 });

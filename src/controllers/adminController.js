@@ -18,19 +18,20 @@ export const getAllReports = catchAsyncError(async (req, res, next) => {
   // if (status) filter.status = status;
     const filter = {};
   // Add 'rejected' as valid status
-  if (status && ['pending', 'in-progress', 'resolved', 'permanent-resolved', 'rejected'].includes(status)) {
+  if (status && ['pending', 'in-progress', 'resolved', 'permanent-resolved', 'rejected','out-of-scope'].includes(status)) {
     filter.status = status;
   }
   if (type) filter.reportType = type;
   
   // Add search functionality - NOW 'search' IS DEFINED
-  if (search) {
-    filter.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } },
-      { 'user.username': { $regex: search, $options: 'i' } }
-    ];
-  }
+if (search) {
+  filter.$or = [
+    { title: { $regex: search, $options: 'i' } },
+    { details: { $regex: search, $options: 'i' } }, // Changed from 'description' to 'details'
+    { 'user.username': { $regex: search, $options: 'i' } },
+    { address: { $regex: search, $options: 'i' } } // Added address search
+  ];
+}
 
   const reports = await Report.find(filter)
     .skip(skip)
@@ -57,7 +58,8 @@ export const getReportDetails = catchAsyncError(async (req, res, next) => {
     .populate('user', 'username email profileImage')
     .populate('assignedTo', 'username profileImage')
     .populate('resolvedBy', 'username profileImage')
-    .populate('permanentlyResolvedBy', 'username email profileImage');
+    .populate('permanentlyResolvedBy', 'username email profileImage')
+     .populate('outOfScopeBy', 'username email profileImage');
 
   if (!report) return next(new ErrorHandler("Report not found", 404));
 
@@ -89,10 +91,6 @@ export const getSupervisors = catchAsyncError(async (req, res, next) => {
 
   res.status(200).json({ success: true, supervisors: stats });
 });
-
-
-
-
 // Get reports overview data (last 7 days)
 export const getReportsOverview = catchAsyncError(async (req, res, next) => {
   const timeZone = 'Asia/Karachi';
@@ -147,18 +145,20 @@ export const getReportsOverview = catchAsyncError(async (req, res, next) => {
   ]);
 
   // Format for frontend
-  const formattedData = results.map(day => ({
+ const formattedData = results.map(day => ({
     date: day._id,
     new: day.data.find(d => d.status === 'pending')?.count || 0,
     inProgress: day.data.find(d => d.status === 'in-progress')?.count || 0,
-    resolved: day.data.find(d => d.status === 'resolved')?.count || 0
+    resolved: day.data.find(d => d.status === 'resolved')?.count || 0,
+    permanentResolved: day.data.find(d => d.status === 'permanent-resolved')?.count || 0,
+    rejected: day.data.find(d => d.status === 'rejected')?.count || 0,
+    outOfScope: day.data.find(d => d.status === 'out-of-scope')?.count || 0
   }));
 
   res.status(200).json({ success: true, data: formattedData });
 });
 
 // Get user activity data (last 12 hours)
-
 export const getUserActivity = catchAsyncError(async (req, res, next) => {
   const timeZone = 'Asia/Karachi';
   const hours = 12;
@@ -208,7 +208,6 @@ export const getUserActivity = catchAsyncError(async (req, res, next) => {
   res.status(200).json({ success: true, data: results });
 });
 
-
 export const getDashboardStats = catchAsyncError(async (req, res, next) => {
   const [
     totalReports, 
@@ -218,7 +217,8 @@ export const getDashboardStats = catchAsyncError(async (req, res, next) => {
     pendingReports,
     rejectedReports,
     permanentResolvedReports,
-    outOfScopeReports // New count
+    outOfScopeReports,
+    inProgressReports  // NEW: Add this
   ] = await Promise.all([
     Report.countDocuments(),
     Report.countDocuments({ status: 'resolved' }),
@@ -227,7 +227,8 @@ export const getDashboardStats = catchAsyncError(async (req, res, next) => {
     Report.countDocuments({ status: 'pending' }),
     Report.countDocuments({ status: 'rejected' }),
     Report.countDocuments({ status: 'permanent-resolved' }),
-    Report.countDocuments({ status: 'out-of-scope' }) // New query
+    Report.countDocuments({ status: 'out-of-scope' }),
+    Report.countDocuments({ status: 'in-progress' })  // NEW: Add this
   ]);
 
   res.status(200).json({
@@ -238,7 +239,8 @@ export const getDashboardStats = catchAsyncError(async (req, res, next) => {
       rejectedReports,
       pendingReports,
       permanentResolvedReports,
-      outOfScopeReports, // Added to response
+      outOfScopeReports,
+      inProgressReports,  // NEW: Add this
       resolutionRate: totalReports 
         ? ((resolvedReports + permanentResolvedReports) / totalReports * 100).toFixed(1) 
         : 0,
@@ -255,14 +257,14 @@ export const getReportStatusCounts = catchAsyncError(async (req, res, next) => {
     resolved,
     permanentResolved,
     rejected,
-    outOfScope // New count
+    outOfScope
   ] = await Promise.all([
     Report.countDocuments({ status: 'pending' }),
     Report.countDocuments({ status: 'in-progress' }),
     Report.countDocuments({ status: 'resolved' }),
     Report.countDocuments({ status: 'permanent-resolved' }),
     Report.countDocuments({ status: 'rejected' }),
-    Report.countDocuments({ status: 'out-of-scope' }) // New query
+    Report.countDocuments({ status: 'out-of-scope' }) 
   ]);
 
   // Calculate total including new status

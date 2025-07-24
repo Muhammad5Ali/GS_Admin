@@ -80,7 +80,7 @@ resolvedImage: String,
     ref: "User"
   },
    assignedTo: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId, 
     ref: "User"
   },
   assignedAt: Date,
