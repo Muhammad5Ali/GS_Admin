@@ -70,6 +70,38 @@ export const resolveReport = catchAsyncError(async (req, res, next) => {
 //     report
 //   });
 // });
+// export const updateReportStatus = catchAsyncError(async (req, res, next) => {
+//   const report = await Report.findById(req.params.id);
+  
+//   if (!report) {
+//     return next(new ErrorHandler("Report not found", 404));
+//   }
+
+//   const { status } = req.body;
+  
+//   // Validate allowed status transitions
+//   if (status === 'resolved' && report.status !== 'in-progress') {
+//     return next(new ErrorHandler("Report must be in progress before resolving", 400));
+//   }
+
+//   // Assign report to supervisor when status changes to in-progress
+//   if (status === 'in-progress') {
+//     report.assignedTo = req.user._id;
+//     report.assignedAt = Date.now() // Add assignment timestamp
+//     report.assignedMsg = req.body.assignedMsg || "No message provided"; 
+//   }
+
+//   report.status = status;
+//   await report.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: `Report status updated to ${status}`,
+//     report
+//   });
+// });
+
+
 export const updateReportStatus = catchAsyncError(async (req, res, next) => {
   const report = await Report.findById(req.params.id);
   
@@ -84,11 +116,23 @@ export const updateReportStatus = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Report must be in progress before resolving", 400));
   }
 
-  // Assign report to supervisor when status changes to in-progress
+  // Track assignment when status changes to in-progress
   if (status === 'in-progress') {
     report.assignedTo = req.user._id;
-    report.assignedAt = Date.now() // Add assignment timestamp
-    report.assignedMsg = req.body.assignedMsg || "No message provided"; 
+    report.assignedAt = Date.now();
+    report.assignedMsg = req.body.assignedMsg || "Assigned to supervisor";
+  }
+
+  // Track rejection
+  if (status === 'rejected') {
+    report.rejectedBy = req.user._id;
+    report.rejectedAt = Date.now();
+  }
+
+  // Track resolution
+  if (status === 'resolved') {
+    report.resolvedBy = req.user._id;
+    report.resolvedAt = Date.now();
   }
 
   report.status = status;
@@ -100,6 +144,7 @@ export const updateReportStatus = catchAsyncError(async (req, res, next) => {
     report
   });
 });
+
 export const getResolvedReportDetails = catchAsyncError(async (req, res, next) => {
   const report = await Report.findById(req.params.id)
     .populate('user', 'username profileImage')
