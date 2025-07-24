@@ -53,6 +53,7 @@ router.get('/reports/in-progress', isAuthenticated, isSupervisor, async (req, re
       .sort({ updatedAt: -1 }) // Sort by most recently updated
       .skip(skip)
       .limit(limit)
+      .populate('assignedTo', 'username profileImage')
       .populate('user', 'username profileImage')
        .select('+assignedMsg'); 
 
