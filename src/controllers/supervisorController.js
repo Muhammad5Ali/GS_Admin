@@ -450,13 +450,14 @@ export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
 });
 
 
+// Make sure this exists
 export const getPermanentResolvedReports = catchAsyncError(async (req, res, next) => {
   const supervisorId = req.user._id;
   const { page = 1, limit = 10 } = req.query;
   const skip = (page - 1) * limit;
 
   const reports = await Report.find({
-    permanentlyResolvedBy: supervisorId,
+    resolvedBy: supervisorId,  // Key change: use resolvedBy instead of permanentlyResolvedBy
     status: 'permanent-resolved'
   })
     .sort({ permanentlyResolvedAt: -1 })
@@ -466,7 +467,7 @@ export const getPermanentResolvedReports = catchAsyncError(async (req, res, next
     .populate('permanentlyResolvedBy', 'username email');
 
   const total = await Report.countDocuments({
-    permanentlyResolvedBy: supervisorId,
+    resolvedBy: supervisorId,
     status: 'permanent-resolved'
   });
 
