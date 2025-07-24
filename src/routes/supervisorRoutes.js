@@ -4,7 +4,7 @@ import Report from '../models/Report.js';
 import User from '../models/User.js';
 import Worker from '../models/Worker.js';
 import { catchAsyncError } from '../middleware/catchAsyncError.js';
-import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,getReportDetails,markAsOutOfScope,getSupervisorProfile } from "../controllers/supervisorController.js";
+import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,getReportDetails,markAsOutOfScope,getSupervisorProfile,getPermanentResolvedReports } from "../controllers/supervisorController.js";
 
 
 const router = express.Router();
@@ -210,7 +210,7 @@ router.get('/reports/resolved/:id',
 router.get('/profile', 
   isAuthenticated, 
   isSupervisor, 
-  getSupervisorProfile  // Use controller function
+  getSupervisorProfile  
 );
 
 
@@ -219,7 +219,12 @@ router.get('/reports/rejected',
   isSupervisor, 
   getRejectedReports
 );
-// Add this correct route:
+router.get('/reports/permanent-resolved', 
+  isAuthenticated, 
+  isSupervisor, 
+  getPermanentResolvedReports
+);
+
 router.get('/reports/out-of-scope', 
   isAuthenticated, 
   isSupervisor, 

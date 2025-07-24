@@ -283,11 +283,85 @@ export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
   });
 });
 
-// Add this new controller function at the bottom
+
+// export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
+//   const supervisorId = req.user._id;
+  
+//   // Get supervisor profile
+//   const supervisor = await User.findById(supervisorId)
+//     .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
+  
+//   if (!supervisor) {
+//     return next(new ErrorHandler("Supervisor not found", 404));
+//   }
+  
+//   // Get reports resolved by this supervisor
+//   const resolvedReports = await Report.find({ 
+//     resolvedBy: supervisorId,
+//     status: 'resolved'
+//   })
+//     .sort({ resolvedAt: -1 })
+//     .limit(10)
+//     .populate('user', 'username profileImage');
+  
+//   // Get rejected reports by this supervisor
+//   const rejectedReports = await Report.find({ 
+//     resolvedBy: supervisorId,
+//     status: 'rejected'
+//   })
+//     .sort({ rejectedAt: -1 })
+//     .limit(10)
+//     .populate('user', 'username profileImage');
+  
+//   // Get in-progress reports by this supervisor
+//   const inProgressReports = await Report.find({ 
+//     assignedTo: supervisorId,
+//     status: 'in-progress'
+//   });
+  
+//   // Calculate stats
+//   const totalResolved = await Report.countDocuments({ 
+//     resolvedBy: supervisorId,
+//     status: 'resolved'
+//   });
+  
+//   const totalRejected = await Report.countDocuments({ 
+//     resolvedBy: supervisorId,
+//     status: 'rejected'
+//   });
+  
+//   const totalInProgress = inProgressReports.length;
+//   const totalHandled = totalResolved + totalRejected;
+  
+//   // Calculate success rate (considering rejections)
+//   const successRate = totalHandled > 0 
+//     ? Math.round((totalResolved / totalHandled) * 100) 
+//     : 0;
+
+//   // Get worker count
+//   const workerCount = await Worker.countDocuments({ supervisor: supervisorId });
+  
+//   res.status(200).json({
+//     success: true,
+//     supervisor,
+//     resolvedReports,
+//     rejectedReports,
+//     stats: {
+//       resolved: totalResolved,
+//       rejected: totalRejected,
+//       inProgress: totalInProgress,
+//       successRate,
+//       workerCount
+//     }
+//   });
+// });
+
+// Updated getSupervisorProfile controller
+
+
 export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
   const supervisorId = req.user._id;
   
-  // Get supervisor profile
   const supervisor = await User.findById(supervisorId)
     .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
   
@@ -304,7 +378,7 @@ export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
     .limit(10)
     .populate('user', 'username profileImage');
   
-  // Get rejected reports by this supervisor
+  // Get rejected reports
   const rejectedReports = await Report.find({ 
     resolvedBy: supervisorId,
     status: 'rejected'
@@ -313,7 +387,16 @@ export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
     .limit(10)
     .populate('user', 'username profileImage');
   
-  // Get in-progress reports by this supervisor
+  // NEW: Get permanent-resolved reports associated with this supervisor
+  const permanentResolvedReports = await Report.find({ 
+    resolvedBy: supervisorId,  // Key change: use resolvedBy instead of permanentlyResolvedBy
+    status: 'permanent-resolved'
+  })
+    .sort({ permanentlyResolvedAt: -1 })
+    .limit(10)
+    .populate('user', 'username profileImage');
+  
+  // Get in-progress reports
   const inProgressReports = await Report.find({ 
     assignedTo: supervisorId,
     status: 'in-progress'
@@ -330,12 +413,20 @@ export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
     status: 'rejected'
   });
   
-  const totalInProgress = inProgressReports.length;
-  const totalHandled = totalResolved + totalRejected;
+  // NEW: Permanent resolved count
+  const totalPermanentResolved = await Report.countDocuments({ 
+    resolvedBy: supervisorId,  // Key change: use resolvedBy instead of permanentlyResolvedBy
+    status: 'permanent-resolved'
+  });
   
-  // Calculate success rate (considering rejections)
+  const totalInProgress = inProgressReports.length;
+  
+  // Combine all handled reports for success rate calculation
+  const totalHandled = totalResolved + totalRejected + totalPermanentResolved;
+  
+  // Update success rate calculation
   const successRate = totalHandled > 0 
-    ? Math.round((totalResolved / totalHandled) * 100) 
+    ? Math.round(((totalResolved + totalPermanentResolved) / totalHandled) * 100) 
     : 0;
 
   // Get worker count
@@ -346,12 +437,44 @@ export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
     supervisor,
     resolvedReports,
     rejectedReports,
+    permanentResolvedReports, // Include in response
     stats: {
       resolved: totalResolved,
       rejected: totalRejected,
+      permanentResolved: totalPermanentResolved, // New stat
       inProgress: totalInProgress,
       successRate,
       workerCount
     }
+  });
+});
+
+
+export const getPermanentResolvedReports = catchAsyncError(async (req, res, next) => {
+  const supervisorId = req.user._id;
+  const { page = 1, limit = 10 } = req.query;
+  const skip = (page - 1) * limit;
+
+  const reports = await Report.find({
+    permanentlyResolvedBy: supervisorId,
+    status: 'permanent-resolved'
+  })
+    .sort({ permanentlyResolvedAt: -1 })
+    .skip(skip)
+    .limit(parseInt(limit))
+    .populate('user', 'username profileImage')
+    .populate('permanentlyResolvedBy', 'username email');
+
+  const total = await Report.countDocuments({
+    permanentlyResolvedBy: supervisorId,
+    status: 'permanent-resolved'
+  });
+
+  res.status(200).json({
+    success: true,
+    reports,
+    total,
+    totalPages: Math.ceil(total / limit),
+    currentPage: parseInt(page)
   });
 });
