@@ -2,6 +2,8 @@ import Report from "../models/Report.js";
 import cloudinary from '../lib/cloudinary.js';
 import ErrorHandler from "../middleware/error.js";
 import { catchAsyncError } from "../middleware/catchAsyncError.js";
+import User from "../models/User.js";
+import Worker from "../models/Worker.js";
 
 export const resolveReport = catchAsyncError(async (req, res, next) => {
   const { image, latitude, longitude, address } = req.body;
