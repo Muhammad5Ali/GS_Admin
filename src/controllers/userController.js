@@ -8,7 +8,6 @@ import {
   generateResetOTPTemplate,
   generateWelcomeTemplate
 } from '../utils/emailTemplates.js';
-import crypto from "crypto";
 
 export const register = catchAsyncError(async (req, res, next) => {
   try {
@@ -332,8 +331,39 @@ export const registerAdmin = catchAsyncError(async (req, res, next) => {
   });
 });
 
+// export const logout = catchAsyncError(async (req, res, next) => {
+//   // Clear token from response
+//   res
+//     .status(200)
+//     .cookie("token", "", {
+//       expires: new Date(Date.now()),
+//       httpOnly: true,
+//       sameSite: "none",
+//       secure: true
+//     })
+//     .json({
+//       success: true,
+//       message: "Logged out successfully.",
+//     });
+  
+//   // Add token invalidation logic
+//   const user = await User.findById(req.user._id);
+//   if (user) {
+//     user.tokenVersion = (user.tokenVersion || 0) + 1;
+//     await user.save({ validateBeforeSave: false });
+    
+//     console.log(`Token invalidated for user ${user.email}. New token version: ${user.tokenVersion}`);
+//   }
+// });
+
 export const logout = catchAsyncError(async (req, res, next) => {
-  // Clear token from response
+  // Increment token version
+  const user = await User.findById(req.user._id);
+  if (user) {
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save({ validateBeforeSave: false });
+  }
+
   res
     .status(200)
     .cookie("token", "", {
@@ -346,15 +376,6 @@ export const logout = catchAsyncError(async (req, res, next) => {
       success: true,
       message: "Logged out successfully.",
     });
-  
-  // Add token invalidation logic
-  const user = await User.findById(req.user._id);
-  if (user) {
-    user.tokenVersion = (user.tokenVersion || 0) + 1;
-    await user.save({ validateBeforeSave: false });
-    
-    console.log(`Token invalidated for user ${user.email}. New token version: ${user.tokenVersion}`);
-  }
 });
 
 export const getUser = catchAsyncError(async (req, res, next) => {

@@ -48,60 +48,7 @@ export const resolveReport = catchAsyncError(async (req, res, next) => {
     report
   });
 });
-// Add this new controller
-// export const updateReportStatus = catchAsyncError(async (req, res, next) => {
-//   const report = await Report.findById(req.params.id);
-  
-//   if (!report) {
-//     return next(new ErrorHandler("Report not found", 404));
-//   }
 
-//   const { status } = req.body;
-  
-//   // Validate allowed status transitions
-//   if (status === 'resolved' && report.status !== 'in-progress') {
-//     return next(new ErrorHandler("Report must be in progress before resolving", 400));
-//   }
-
-//   report.status = status;
-//   await report.save();
-
-//   res.status(200).json({
-//     success: true,
-//     message: `Report status updated to ${status}`,
-//     report
-//   });
-// });
-// export const updateReportStatus = catchAsyncError(async (req, res, next) => {
-//   const report = await Report.findById(req.params.id);
-  
-//   if (!report) {
-//     return next(new ErrorHandler("Report not found", 404));
-//   }
-
-//   const { status } = req.body;
-  
-//   // Validate allowed status transitions
-//   if (status === 'resolved' && report.status !== 'in-progress') {
-//     return next(new ErrorHandler("Report must be in progress before resolving", 400));
-//   }
-
-//   // Assign report to supervisor when status changes to in-progress
-//   if (status === 'in-progress') {
-//     report.assignedTo = req.user._id;
-//     report.assignedAt = Date.now() // Add assignment timestamp
-//     report.assignedMsg = req.body.assignedMsg || "No message provided"; 
-//   }
-
-//   report.status = status;
-//   await report.save();
-
-//   res.status(200).json({
-//     success: true,
-//     message: `Report status updated to ${status}`,
-//     report
-//   });
-// });
 
 
 export const updateReportStatus = catchAsyncError(async (req, res, next) => {
@@ -220,36 +167,7 @@ export const getReportDetails = catchAsyncError(async (req, res, next) => {
   });
 });
 
-// export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
-//   const { reason } = req.body;
-//   const report = await Report.findById(req.params.id);
-  
-//   if (!report) {
-//     return next(new ErrorHandler("Report not found", 404));
-//   }
-  
-//   // Validate allowed transitions
-//   if (report.status !== 'pending') {
-//     return next(new ErrorHandler(
-//       "Only pending reports can be marked as out-of-scope", 
-//       400
-//     ));
-//   }
-  
-//   // Update report
-//   report.status = 'out-of-scope';
-//   report.outOfScopeReason = reason;
-//   report.markedOutOfScopeAt = Date.now();
-//   report.markedOutOfScopeBy = req.user._id;
-  
-//   await report.save();
-  
-//   res.status(200).json({
-//     success: true,
-//     message: "Report marked as out of scope",
-//     report
-//   });
-// });
+
 
 
 export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
@@ -284,79 +202,7 @@ export const markAsOutOfScope = catchAsyncError(async (req, res, next) => {
 });
 
 
-// export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
-//   const supervisorId = req.user._id;
-  
-//   // Get supervisor profile
-//   const supervisor = await User.findById(supervisorId)
-//     .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
-  
-//   if (!supervisor) {
-//     return next(new ErrorHandler("Supervisor not found", 404));
-//   }
-  
-//   // Get reports resolved by this supervisor
-//   const resolvedReports = await Report.find({ 
-//     resolvedBy: supervisorId,
-//     status: 'resolved'
-//   })
-//     .sort({ resolvedAt: -1 })
-//     .limit(10)
-//     .populate('user', 'username profileImage');
-  
-//   // Get rejected reports by this supervisor
-//   const rejectedReports = await Report.find({ 
-//     resolvedBy: supervisorId,
-//     status: 'rejected'
-//   })
-//     .sort({ rejectedAt: -1 })
-//     .limit(10)
-//     .populate('user', 'username profileImage');
-  
-//   // Get in-progress reports by this supervisor
-//   const inProgressReports = await Report.find({ 
-//     assignedTo: supervisorId,
-//     status: 'in-progress'
-//   });
-  
-//   // Calculate stats
-//   const totalResolved = await Report.countDocuments({ 
-//     resolvedBy: supervisorId,
-//     status: 'resolved'
-//   });
-  
-//   const totalRejected = await Report.countDocuments({ 
-//     resolvedBy: supervisorId,
-//     status: 'rejected'
-//   });
-  
-//   const totalInProgress = inProgressReports.length;
-//   const totalHandled = totalResolved + totalRejected;
-  
-//   // Calculate success rate (considering rejections)
-//   const successRate = totalHandled > 0 
-//     ? Math.round((totalResolved / totalHandled) * 100) 
-//     : 0;
 
-//   // Get worker count
-//   const workerCount = await Worker.countDocuments({ supervisor: supervisorId });
-  
-//   res.status(200).json({
-//     success: true,
-//     supervisor,
-//     resolvedReports,
-//     rejectedReports,
-//     stats: {
-//       resolved: totalResolved,
-//       rejected: totalRejected,
-//       inProgress: totalInProgress,
-//       successRate,
-//       workerCount
-//     }
-//   });
-// });
-
-// Updated getSupervisorProfile controller
 
 
 export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
@@ -450,7 +296,7 @@ export const getSupervisorProfile = catchAsyncError(async (req, res, next) => {
 });
 
 
-// Make sure this exists
+
 export const getPermanentResolvedReports = catchAsyncError(async (req, res, next) => {
   const supervisorId = req.user._id;
   const { page = 1, limit = 10 } = req.query;

@@ -12,7 +12,7 @@
     },
      publicId: {
     type: String,
-    required: true // Make this required
+    required: true
   },
     details: {
       type: String,
@@ -83,6 +83,10 @@ resolvedImage: String,
     type: mongoose.Schema.Types.ObjectId, 
     ref: "User"
   },
+  assignedBy: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User"
+},
   assignedAt: Date,
   assignedMsg:String,
   distanceToReported: Number, 

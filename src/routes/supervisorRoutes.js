@@ -4,7 +4,8 @@ import Report from '../models/Report.js';
 import User from '../models/User.js';
 import Worker from '../models/Worker.js';
 import { catchAsyncError } from '../middleware/catchAsyncError.js';
-import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,getReportDetails,markAsOutOfScope,getSupervisorProfile,getPermanentResolvedReports } from "../controllers/supervisorController.js";
+import { resolveReport,updateReportStatus,getResolvedReportDetails,getRejectedReports,
+getReportDetails,markAsOutOfScope,getSupervisorProfile,getPermanentResolvedReports } from "../controllers/supervisorController.js";
 
 
 const router = express.Router();
@@ -96,28 +97,6 @@ router.get('/reports/resolved', isAuthenticated, isSupervisor, async (req, res) 
   }
 });
 
-// Update report status
-// router.put('/reports/:id/status', isAuthenticated, isSupervisor, async (req, res) => {
-//   try {
-//     const { status } = req.body;
-    
-//     if (status === 'resolved') {
-//       return res.status(400).json({ 
-//         message: 'Use the resolve endpoint to resolve reports' 
-//       });
-//     }
-    
-//     const report = await Report.findByIdAndUpdate(
-//       req.params.id,
-//       { status },
-//       { new: true }
-//     );
-//     res.json(report);
-//   } catch (error) {
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// });
-// Update the status route
 router.put('/reports/:id/status', 
   isAuthenticated, 
   isSupervisor, 
@@ -130,83 +109,6 @@ router.get('/reports/resolved/:id',
   isSupervisor, 
   getResolvedReportDetails
 );
-
-// router.get('/profile', isAuthenticated, isSupervisor, async (req, res) => {
-//   try {
-//     const supervisorId = req.user._id;
-    
-//     // Get supervisor profile
-//     const supervisor = await User.findById(supervisorId)
-//       .select('-password -tokenVersion -resetPasswordOTP -verificationCode');
-    
-//     if (!supervisor) {
-//       return res.status(404).json({ message: 'Supervisor not found' });
-//     }
-    
-//     // Get reports resolved by this supervisor
-//     const resolvedReports = await Report.find({ 
-//       resolvedBy: supervisorId,
-//       status: 'resolved'
-//     })
-//       .sort({ resolvedAt: -1 })
-//       .limit(10)
-//       .populate('user', 'username profileImage');
-    
-//     // NEW: Get rejected reports by this supervisor
-//     const rejectedReports = await Report.find({ 
-//       resolvedBy: supervisorId,
-//       status: 'rejected'
-//     })
-//       .sort({ rejectedAt: -1 })
-//       .limit(10)
-//       .populate('user', 'username profileImage');
-    
-//     // Get in-progress reports by this supervisor
-//     const inProgressReports = await Report.find({ 
-//       assignedTo: supervisorId,
-//       status: 'in-progress'
-//     });
-    
-//     // Calculate stats
-//     const totalResolved = await Report.countDocuments({ 
-//       resolvedBy: supervisorId,
-//       status: 'resolved'
-//     });
-    
-//     // NEW: Add rejected count
-//     const totalRejected = await Report.countDocuments({ 
-//       resolvedBy: supervisorId,
-//       status: 'rejected'
-//     });
-    
-//     const totalInProgress = inProgressReports.length;
-//     const totalHandled = totalResolved + totalInProgress;
-    
-//     // Calculate success rate
-//     const successRate = totalHandled > 0 
-//       ? Math.round((totalResolved / totalHandled) * 100) 
-//       : 0;
-
-//     // Get worker count
-//     const workerCount = await Worker.countDocuments({ supervisor: supervisorId });
-    
-//     res.json({
-//       success: true,
-//       supervisor,
-//       resolvedReports,
-//       rejectedReports, // NEW: Add rejected reports
-//       stats: {
-//         resolved: totalResolved,
-//         rejected: totalRejected, // NEW: Add rejected count
-//         inProgress: totalInProgress,
-//         successRate,
-//         workerCount
-//       }
-//     });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// });
 
 router.get('/profile', 
   isAuthenticated, 

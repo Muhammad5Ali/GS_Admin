@@ -4,8 +4,8 @@ import {
   getWorkers, 
   updateWorker, 
   deleteWorker,
-  getWorkerById // ADD THIS IMPORT
-} from "../controllers/workerController.js"; // CORRECT CONTROLLER
+  getWorkerById 
+} from "../controllers/workerController.js";
 import { isAuthenticated } from "../middleware/auth.js";
 import { isSupervisor } from "./supervisorRoutes.js";
 
@@ -16,7 +16,7 @@ router.use(isAuthenticated, isSupervisor);
 // Worker CRUD routes
 router.post("/", addWorker);
 router.get("/", getWorkers);
-router.get("/:id", getWorkerById); // ADD THIS ROUTE
+router.get("/:id", getWorkerById);
 router.put("/:id", updateWorker);
 router.delete("/:id", deleteWorker);
 

@@ -8,7 +8,7 @@ import moment from 'moment-timezone';
 // Mark attendance
 export const markAttendance = catchAsyncError(async (req, res, next) => {
   const { workerId, status, tasksCompleted } = req.body;
-  
+
   if (!workerId || !status) {
     return next(new ErrorHandler("Worker ID and status are required", 400));
   }
@@ -18,7 +18,7 @@ export const markAttendance = catchAsyncError(async (req, res, next) => {
     _id: workerId,
     supervisor: req.user._id
   });
-  
+
   if (!worker) {
     return next(new ErrorHandler("Worker not found", 404));
   }
@@ -26,7 +26,7 @@ export const markAttendance = catchAsyncError(async (req, res, next) => {
   // Get today's date in Pakistan time (UTC+5)
   const todayPakistan = moment().tz('Asia/Karachi').startOf('day').toDate();
   const tomorrowPakistan = moment(todayPakistan).add(1, 'day').toDate();
-
+  
   // Check if attendance already exists for today
   const existingAttendance = await Attendance.findOne({
     worker: workerId,
@@ -67,7 +67,7 @@ export const getWorkerAttendance = catchAsyncError(async (req, res, next) => {
     _id: workerId,
     supervisor: req.user._id
   });
-  
+
   if (!worker) {
     return next(new ErrorHandler("Worker not found", 404));
   }

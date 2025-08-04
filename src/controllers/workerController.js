@@ -79,7 +79,7 @@ export const deleteWorker = catchAsyncError(async (req, res, next) => {
     message: "Worker deleted"
   });
 });
-// Add this to workerController.js
+
 export const getWorkerById = catchAsyncError(async (req, res, next) => {
   const worker = await Worker.findById(req.params.id);
   

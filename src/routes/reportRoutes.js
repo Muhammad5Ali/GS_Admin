@@ -262,51 +262,7 @@ router.get("/user", isAuthenticated, async (req, res) => {
   }
 });
 
-// router.delete("/:id", isAuthenticated, async (req, res) => {
-//   try {
-//     const report = await Report.findById(req.params.id);
-//     if (!report) {
-//       return res.status(404).json({ message: "Report not found" });
-//     }
 
-//     if (report.user.toString() !== req.user._id.toString()) {
-//       return res.status(401).json({ message: "Unauthorized" });
-//     }
-
-//     if (report.publicId) {
-//       try {
-//         await cloudinary.uploader.destroy(report.publicId);
-//       } catch (deleteError) {
-//         console.error("Cloudinary deletion error:", deleteError);
-//       }
-//     }
-
-//     const pointsMap = {
-//       standard: 10,
-//       hazardous: 20,
-//       large: 15
-//     };
-    
-//     const pointsToDeduct = report.reportType 
-//       ? pointsMap[report.reportType] || 10 
-//       : 10;
-
-//     await User.findByIdAndUpdate(req.user._id, {
-//       $inc: { 
-//         reportCount: -1, 
-//         points: -pointsToDeduct 
-//       }
-//     });
-
-//     await report.deleteOne();
-//     res.json({ message: "Report deleted successfully" });
-    
-//   } catch (error) {
-//     console.error("Delete Report Error:", error);
-//     res.status(500).json({ message: "Internal Server Error" });
-//   }
-// });
-// Get single report with full workflow details
 
 router.delete("/:id", isAuthenticated, async (req, res) => {
   try {
@@ -352,6 +308,7 @@ router.get("/:id", isAuthenticated, async (req, res) => {
     const report = await Report.findById(req.params.id)
       .populate('user', 'username profileImage')
       .populate('assignedTo', 'username email profileImage')
+      .populate('assignedBy', 'username profileImage')
       .populate('resolvedBy', 'username email profileImage')
       .populate('permanentlyResolvedBy', 'username email profileImage')
       .populate('rejectedBy', 'username email profileImage')
