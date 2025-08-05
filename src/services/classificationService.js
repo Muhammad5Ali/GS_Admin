@@ -6,7 +6,8 @@ console.log(`Using model: avatar77/mobilenetv3`);
 const DEFAULT_TIMEOUT = 60000;
 const MIN_CONFIDENCE = 0.65;
 const HIGH_CONFIDENCE_THRESHOLD = 0.85;
-const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/api/predict';
+// const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/api/predict';
+const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/gradio_api/call/predict';
 const MAX_RETRIES = 3;
 
 export default async function classifyImage(imageBase64) {
@@ -24,7 +25,8 @@ export default async function classifyImage(imageBase64) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          data: [rawBase64] // Send pure base64 without prefix
+          data: [rawBase64], // Send pure base64 without prefix
+           fn_index: 0 
         }),
         timeout: DEFAULT_TIMEOUT
       });

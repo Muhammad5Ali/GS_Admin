@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { isAuthenticated } from "../middleware/auth.js";
 
 const router = express.Router();
+// const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/gradio_api/call/predict';
 const HF_API_URL = 'https://avatar77-mobilenetv3.hf.space/gradio_api/call/predict';
 const HF_TIMEOUT = process.env.HF_TIMEOUT || 45000; // 45 seconds
 
