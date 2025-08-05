@@ -29,7 +29,6 @@ router.post('/', isAuthenticated, async (req, res) => {
       longitude,
       photoTimestamp,
       reportType,
-      forceSubmit
     } = req.body;
 
     // Server-side validation
@@ -92,41 +91,37 @@ router.post('/', isAuthenticated, async (req, res) => {
       });
     }
 
-    let classification;
-    // Only run AI check if user hasn't forced the submit
-    if (!forceSubmit) {
-      try {
-        classification = await classifyImage(image);
-        
-        // 🔄 Updated classification check with dynamic confidence thresholds
-        const minConfidence = classification.isWaste ? MIN_CONFIDENCE_WASTE : MIN_CONFIDENCE_NON_WASTE;
-        
-        // Case 1: Non-waste with high confidence
-        if (!classification.isWaste && classification.confidence >= minConfidence) {
-          return res.status(400).json({
-            message: 'Image does not show recognizable waste',
-            classification,
-            code: 'NOT_WASTE'
-          });
-        }
-        
-        // Case 2: Low confidence for both waste/non-waste
-        if (classification.confidence < minConfidence) {
-          return res.status(400).json({
-            message: 'Low confidence in waste detection',
-            classification,
-            code: 'LOW_CONFIDENCE'
-          });
-        }
-      } catch (error) {
-        console.error('Classification Error:', error);
-        return res.status(503).json({
-          message: 'Waste verification service unavailable',
-          code: 'SERVICE_UNAVAILABLE',
-          error: error.message
-        });
-      }
-    }
+  let classification;
+try {
+  classification = await classifyImage(image);
+  
+  const minConfidence = classification.isWaste 
+    ? MIN_CONFIDENCE_WASTE 
+    : MIN_CONFIDENCE_NON_WASTE;
+  
+  if (!classification.isWaste && classification.confidence >= minConfidence) {
+    return res.status(400).json({
+      message: 'Image does not show recognizable waste',
+      classification,
+      code: 'NOT_WASTE'
+    });
+  }
+  
+  if (classification.confidence < minConfidence) {
+    return res.status(400).json({
+      message: 'Low confidence in waste detection',
+      classification,
+      code: 'LOW_CONFIDENCE'
+    });
+  }
+} catch (error) {
+  console.error('Classification Error:', error);
+  return res.status(503).json({
+    message: 'Waste verification service unavailable',
+    code: 'SERVICE_UNAVAILABLE',
+    error: error.message
+  });
+}
 
     // Cloudinary upload with timeout - USING DATA URI
     let uploadResponse;
