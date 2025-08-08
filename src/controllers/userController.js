@@ -222,53 +222,111 @@ export const resendOTP = catchAsyncError(async (req, res, next) => {
 });
 
 export const login = catchAsyncError(async (req, res, next) => {
-  const { email, password } = req.body;
-  
-  // Validate input
-  if (!email || !password) {
-    return next(new ErrorHandler("Email and password are required.", 400));
+  const { email, password, client } = req.body; // Added 'client' parameter
+
+  // Validate all inputs including client type
+  if (!email || !password || !client) {
+    return next(new ErrorHandler("Email, password, and client type are required.", 400));
   }
-  
+
   // Find user with verified account
-  const user = await User.findOne({ 
-    email, 
-    accountVerified: true 
-  }).select("+password +welcomeEmailSent");  // Include welcomeEmailSent field
-  
+  const user = await User.findOne({
+    email,
+    accountVerified: true
+  }).select("+password +welcomeEmailSent");
+
   if (!user) {
     return next(new ErrorHandler("Invalid email or password.", 400));
   }
-  
+
   // Verify password
   const isPasswordMatched = await user.comparePassword(password);
   if (!isPasswordMatched) {
     return next(new ErrorHandler("Invalid email or password.", 400));
   }
-  
-  // Send welcome email on first login
+
+  // Validate role based on client type
+  if (client === "mobile" && !["user", "supervisor"].includes(user.role)) {
+    return next(new ErrorHandler("Mobile access restricted to users/supervisors", 403));
+  }
+
+  if (client === "web" && user.role !== "admin") {
+    return next(new ErrorHandler("Web dashboard requires admin privileges", 403));
+  }
+
+  // Send welcome email on first login (if applicable)
   if (!user.welcomeEmailSent) {
     try {
       const message = generateWelcomeTemplate(user.username);
-      await sendEmail({ 
-        email: user.email, 
-        subject: "Welcome to GreenSnap!", 
-        message 
+      await sendEmail({
+        email: user.email,
+        subject: "Welcome to GreenSnap!",
+        message
       });
-      
+
       // Update user record to mark email as sent
       user.welcomeEmailSent = true;
       await user.save({ validateBeforeSave: false });
-      
+
       console.log(`Welcome email sent to ${user.email}`);
     } catch (emailError) {
       console.error('Welcome email failed:', emailError);
       // Don't block login for email failure
     }
   }
-  
+
   // Send authentication token
   sendToken(user, 200, "User logged in successfully.", res);
 });
+
+// export const login = catchAsyncError(async (req, res, next) => {
+//   const { email, password } = req.body;
+  
+//   // Validate input
+//   if (!email || !password) {
+//     return next(new ErrorHandler("Email and password are required.", 400));
+//   }
+  
+//   // Find user with verified account
+//   const user = await User.findOne({ 
+//     email, 
+//     accountVerified: true 
+//   }).select("+password +welcomeEmailSent");  // Include welcomeEmailSent field
+  
+//   if (!user) {
+//     return next(new ErrorHandler("Invalid email or password.", 400));
+//   }
+  
+//   // Verify password
+//   const isPasswordMatched = await user.comparePassword(password);
+//   if (!isPasswordMatched) {
+//     return next(new ErrorHandler("Invalid email or password.", 400));
+//   }
+  
+//   // Send welcome email on first login
+//   if (!user.welcomeEmailSent) {
+//     try {
+//       const message = generateWelcomeTemplate(user.username);
+//       await sendEmail({ 
+//         email: user.email, 
+//         subject: "Welcome to GreenSnap!", 
+//         message 
+//       });
+      
+//       // Update user record to mark email as sent
+//       user.welcomeEmailSent = true;
+//       await user.save({ validateBeforeSave: false });
+      
+//       console.log(`Welcome email sent to ${user.email}`);
+//     } catch (emailError) {
+//       console.error('Welcome email failed:', emailError);
+//       // Don't block login for email failure
+//     }
+//   }
+  
+//   // Send authentication token
+//   sendToken(user, 200, "User logged in successfully.", res);
+// });
 export const registerSupervisor = catchAsyncError(async (req, res, next) => {
   const { username, email, password, secretKey } = req.body;
   

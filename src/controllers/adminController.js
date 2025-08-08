@@ -712,11 +712,15 @@ export const getSupervisorPerformanceAnalytics = catchAsyncError(async (req, res
       const resolved  = reports.find(r => r._id === 'resolved')?.count  || 0;
       const permanent = reports.find(r => r._id === 'permanent-resolved')?.count || 0;
       const rejected  = reports.find(r => r._id === 'rejected')?.count  || 0;
-      const outOfScope= reports.find(r => r._id === 'out-of-scope')?.count  || 0;
+      // const outOfScope= reports.find(r => r._id === 'out-of-scope')?.count  || 0;
       // 2) Separately count in-progress *assignments*
       const inProgress = await Report.countDocuments({
         assignedTo: supervisor._id,
         status: 'in-progress'
+      });
+      const outOfScope = await Report.countDocuments({
+        outOfScopeBy: supervisor._id,
+        status: 'out-of-scope'
       });
       // 3) Compute success rate (only counts those that went through resolve/permanent vs rejected/out-of-scope)
       const handledTotal = resolved + permanent + rejected + outOfScope;
