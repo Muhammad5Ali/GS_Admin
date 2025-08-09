@@ -175,7 +175,7 @@ export const generateResetOTPTemplate = (otp, username) => {
             <!-- Expiry Notice -->
             <tr>
               <td class="expiry-note">
-                This OTP will expire in 15 minutes. If you didn't request this, please ignore this email.
+                This OTP will expire in 5 minutes. If you didn't request this, please ignore this email.
               </td>
             </tr>
 
