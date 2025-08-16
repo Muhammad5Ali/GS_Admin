@@ -15,6 +15,7 @@ import supervisorRoutes from "./routes/supervisorRoutes.js";
 import workerRoutes from "./routes/workerRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import publicRoutes from './routes/publicRoutes.js';
 
 const app = express();
 app.set('trust proxy', 1); // Trust reverse proxy
@@ -69,6 +70,7 @@ app.use("/api/supervisor", supervisorRoutes);
 app.use("/api/workers", workerRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/admin", adminRoutes);
+app.use('/api/public', publicRoutes);
 
 
 removeUnverifiedAccounts(); // Schedule task to remove unverified accounts
