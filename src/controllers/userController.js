@@ -72,17 +72,41 @@ export const register = catchAsyncError(async (req, res, next) => {
       return next(new ErrorHandler("All fields are required.", 400));
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // ENHANCED: Validate email format with specific rules
+    // 1. Only one @ symbol
+    // 2. Before @: only alphanumeric characters, at least one alphabet
+    // 3. After @: specific allowed domains
+    const emailRegex = /^[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z0-9]+$/;
+    
+    // Check if email matches basic format
     if (!emailRegex.test(email)) {
       return next(new ErrorHandler("Please enter a valid email address.", 400));
     }
-
-    // NEW: Restrict to specific domains
-    const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com','iiu.edu.pk']; 
-    const emailDomain = email.split('@')[1];
     
-    if (!allowedDomains.includes(emailDomain)) {
+    // Check for exactly one @ symbol
+    const atSymbolCount = (email.match(/@/g) || []).length;
+    if (atSymbolCount !== 1) {
+      return next(new ErrorHandler("Email can only contain one @ symbol.", 400));
+    }
+    
+    // Split email into local part and domain
+    const [localPart, domain] = email.split('@');
+    
+    // Check local part contains at least one alphabet character
+    const hasAlphabet = /[A-Za-z]/.test(localPart);
+    if (!hasAlphabet) {
+      return next(new ErrorHandler("Email must contain at least one letter before the @ symbol.", 400));
+    }
+    
+    // Check local part contains only alphanumeric characters
+    const isLocalPartValid = /^[A-Za-z0-9]+$/.test(localPart);
+    if (!isLocalPartValid) {
+      return next(new ErrorHandler("Email can only contain letters and numbers before the @ symbol.", 400));
+    }
+
+    // Restrict to specific domains (including original iiu.edu.pk)
+    const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'iiu.edu.pk'];
+    if (!allowedDomains.includes(domain)) {
       return next(new ErrorHandler("We only accept emails from Gmail, Yahoo, Outlook, Hotmail, and IIU.edu.pk.", 400));
     }
 
@@ -96,7 +120,7 @@ export const register = catchAsyncError(async (req, res, next) => {
       return next(new ErrorHandler("Email is already registered.", 400));
     }
     
-    // Enhanced: Prevent too many registration attempts within 24 hours
+    // Prevent too many registration attempts within 24 hours
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const registrationAttempts = await User.countDocuments({
       email,

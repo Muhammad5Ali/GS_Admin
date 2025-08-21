@@ -9,24 +9,34 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    validate: {
-      validator: function(email) {
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) return false;
-        
-        // Validate allowed domains
-        const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com','iiu.edu.pk'];
-        const emailDomain = email.split('@')[1];
-        return allowedDomains.includes(emailDomain);
-      },
-      message: 'Please enter a valid email address from Gmail, Yahoo, Outlook, IIU.edu.pk, or Hotmail'
-    }
-  },
+ email: {
+  type: String,
+  required: true,
+  unique: true,
+  validate: {
+    validator: function(email) {
+      // Check for exactly one @ symbol
+      const atSymbolCount = (email.match(/@/g) || []).length;
+      if (atSymbolCount !== 1) return false;
+      
+      // Split email into parts
+      const [localPart, domain] = email.split('@');
+      
+      // Check local part contains at least one alphabet character
+      const hasAlphabet = /[A-Za-z]/.test(localPart);
+      if (!hasAlphabet) return false;
+      
+      // Check local part contains only alphanumeric characters
+      const isLocalPartValid = /^[A-Za-z0-9]+$/.test(localPart);
+      if (!isLocalPartValid) return false;
+      
+      // Validate allowed domains
+      const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com','iiu.edu.pk'];
+      return allowedDomains.includes(domain);
+    },
+    message: 'Please enter a valid email address with only letters and numbers before the @ symbol from allowed domains (Gmail, Yahoo, Outlook, Hotmail).'
+  }
+},
   password: {
     type: String,
     minLength: [8, "Password must have at least 8 characters."],
