@@ -63,7 +63,6 @@ import {
 // });
 
 
-
 export const register = catchAsyncError(async (req, res, next) => {
   try {
     const { username, email, password } = req.body;
@@ -73,10 +72,18 @@ export const register = catchAsyncError(async (req, res, next) => {
       return next(new ErrorHandler("All fields are required.", 400));
     }
 
-    // NEW: Validate email format
+    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return next(new ErrorHandler("Please enter a valid email address.", 400));
+    }
+
+    // NEW: Restrict to specific domains
+    const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com','iiu.edu.pk']; 
+    const emailDomain = email.split('@')[1];
+    
+    if (!allowedDomains.includes(emailDomain)) {
+      return next(new ErrorHandler("We only accept emails from Gmail, Yahoo, Outlook, Hotmail, and IIU.edu.pk.", 400));
     }
 
     // Check for existing verified user

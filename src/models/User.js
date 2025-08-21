@@ -15,10 +15,16 @@ const userSchema = new mongoose.Schema({
     unique: true,
     validate: {
       validator: function(email) {
-        // Use the same regex pattern for consistency
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) return false;
+        
+        // Validate allowed domains
+        const allowedDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com','iiu.edu.pk'];
+        const emailDomain = email.split('@')[1];
+        return allowedDomains.includes(emailDomain);
       },
-      message: 'Please enter a valid email address'
+      message: 'Please enter a valid email address from Gmail, Yahoo, Outlook, IIU.edu.pk, or Hotmail'
     }
   },
   password: {
