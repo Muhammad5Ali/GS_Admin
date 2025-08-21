@@ -72,6 +72,11 @@ export const register = catchAsyncError(async (req, res, next) => {
       return next(new ErrorHandler("All fields are required.", 400));
     }
 
+    // Validate username length
+    if (username.length < 3 || username.length > 32) {
+      return next(new ErrorHandler("Username must be between 3 and 32 characters.", 400));
+    }
+
     // ENHANCED: Validate email format with specific rules
     // 1. Only one @ symbol
     // 2. Before @: only alphanumeric characters, at least one alphabet
@@ -321,20 +326,25 @@ export const login = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Email, password, and client type are required.", 400));
   }
 
-  // Find user with verified account
+  // Find user by email (regardless of verification status)
   const user = await User.findOne({
-    email,
-    accountVerified: true
-  }).select("+password +welcomeEmailSent");
+    email
+  }).select("+password +welcomeEmailSent +accountVerified");
 
+  // Check if user exists
   if (!user) {
-    return next(new ErrorHandler("Invalid email or password.", 400));
+    return next(new ErrorHandler("No account found with this email address.", 400));
+  }
+
+  // Check if account is verified
+  if (!user.accountVerified) {
+    return next(new ErrorHandler("Please verify your account before logging in.", 400));
   }
 
   // Verify password
   const isPasswordMatched = await user.comparePassword(password);
   if (!isPasswordMatched) {
-    return next(new ErrorHandler("Invalid email or password.", 400));
+    return next(new ErrorHandler("Incorrect password. Please try again.", 400));
   }
 
   // Validate role based on client type
