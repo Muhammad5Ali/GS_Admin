@@ -9,6 +9,61 @@ import {
   generateWelcomeTemplate
 } from '../utils/emailTemplates.js';
 
+// export const register = catchAsyncError(async (req, res, next) => {
+//   try {
+//     const { username, email, password } = req.body;
+    
+//     // Validate required fields
+//     if (!username || !email || !password) {
+//       return next(new ErrorHandler("All fields are required.", 400));
+//     }
+
+//     // Check for existing verified user
+//     const existingUser = await User.findOne({ 
+//       email,
+//       accountVerified: true
+//     });
+
+//     if (existingUser) {
+//       return next(new ErrorHandler("Email is already registered.", 400));
+//     }
+    
+//     // Enhanced: Prevent too many registration attempts within 24 hours
+//     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+//     const registrationAttempts = await User.countDocuments({
+//       email,
+//       accountVerified: false,
+//       createdAt: { $gt: twentyFourHoursAgo }
+//     });
+
+//     if (registrationAttempts >= 3) {
+//       return next(
+//         new ErrorHandler(
+//           "You have exceeded the maximum registration attempts. Please try again tomorrow.",
+//           400
+//         )
+//       );
+//     }
+
+//     // Create user profile
+//     const profileImage = `https://api.dicebear.com/7.x/avataaars/png?seed=${username}`;
+//     const userData = { username, email, password, profileImage };
+
+//     const user = await User.create(userData);
+//     const verificationCode = user.generateVerificationCode();
+//     await user.save();
+    
+//     // Send verification email
+//     sendVerificationEmail(verificationCode, username, email, res);
+    
+//   } catch (error) {
+//     console.error("Registration Error:", error);
+//     next(error);
+//   }
+// });
+
+
+
 export const register = catchAsyncError(async (req, res, next) => {
   try {
     const { username, email, password } = req.body;
@@ -16,6 +71,12 @@ export const register = catchAsyncError(async (req, res, next) => {
     // Validate required fields
     if (!username || !email || !password) {
       return next(new ErrorHandler("All fields are required.", 400));
+    }
+
+    // NEW: Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return next(new ErrorHandler("Please enter a valid email address.", 400));
     }
 
     // Check for existing verified user
