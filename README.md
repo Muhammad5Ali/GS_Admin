@@ -1,7 +1,7 @@
 # GreenSnap AI — Backend (MobileNetV3 Variant)
 
 > Production-ready Express.js backend for **GreenSnap AI** — a civic waste-reporting platform.
-> This variant uses **MobileNetV3‑Large** (whole-image classifier) to validate reports, manages supervisor/admin workflows, and enforces location‑verified cleanups via a Haversine geofence. Deployed on **Render** (no Docker required).
+> This variant uses **MobileNetV3‑Large** (whole-image classifier) to validate reports, manages supervisor/admin workflows, and enforces location‑verified cleanups via a Haversine geofence. Deployed on **Render**.
 
 ---
 
@@ -20,7 +20,6 @@
 * [Model Integration Options](#model-integration-options)
 * [Deployment on Render (notes)](#deployment-on-render-notes)
 * [Product / UX Highlights Supported](#product--ux-highlights-supported)
-* [Maintainers & Credits](#maintainers--credits)
 * [Contributing](#contributing)
 * [License](#license)
 
