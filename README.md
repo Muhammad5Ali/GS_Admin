@@ -1,136 +1,155 @@
-# GreenSnap AI — Backend (MobileNetV3 Variant)
+GreenSnap AI — Backend (MobileNetV3 Variant)
 
-**Repository:** https://github.com/Muhammad5Ali/GS_Admin  
-**Role:** Express.js backend powering the GreenSnap mobile apps (citizens & supervisors) and the Admin web portal. This variant uses **MobileNetV3-Large** for whole-image waste classification and enforces geospatial verification (Haversine 10 m rule).
+Express.js backend for GreenSnap AI — a production-ready service that validates citizen-submitted waste reports using MobileNetV3-Large, manages supervisor/admin workflows, and enforces location-verified cleanups via a Haversine geofence. Deployed on Render (no Docker required).
 
----
+Why this service exists
 
-## Purpose (TL;DR)
-GreenSnap AI automates validation of citizen-submitted waste reports, enforces location-verified cleanups, and provides supervisors/admins the workflows and audit data needed for accountable municipal action. This backend receives images + location, runs a MobileNetV3 classification, applies confidence thresholds, stores report lifecycle data, and performs the final geo-verification that decides whether a cleanup is permanently accepted.
+GreenSnap AI automates the verification and lifecycle of civic waste reports so municipalities can act faster and more transparently. This backend:
 
----
+Filters photo reports with a lightweight, robust image classifier (MobileNetV3).
 
-## Quick start (minimal)
+Applies configurable confidence rules to reduce false positives and unnecessary field trips.
 
-1. Clone & install
-```bash
+Records supervisor actions and audit data (timestamps, comments, resolved images).
+
+Validates cleanup locations using a strict geospatial check (default: 10 meters) before permanently closing a report.
+
+What’s included
+
+Authentication and role-aware logic (Citizen, Supervisor, Admin)
+
+Report ingestion (image + GPS + description) and lifecycle management
+
+Image validation workflow (MobileNetV3 confidence thresholds)
+
+Supervisor tools support (in-progress, out-of-scope, resolve, worker/attendance hooks)
+
+Admin geospatial verification (Haversine distance → permanent-resolve / reject)
+
+Cloud image hosting support (Cloudinary) and optional external model inference (Hugging Face / custom endpoint)
+
+Lightweight analytics & audit trail storage for transparency
+
+Quick start (developer)
+# clone
 git clone https://github.com/Muhammad5Ali/GS_Admin.git
 cd GS_Admin
+
+# install
 npm install
-Add .env (see template below)
 
-Run (development)
-
-bash
-Copy code
+# create .env (see template below), then run
 npm run dev
-# or
-node server.js
-.env template (fill values)
-Create a .env in the project root and add the following keys (do not commit secrets).
+# or for production
+npm start
 
-ini
-Copy code
+.env template (copy → fill — do NOT commit)
 PORT=3000
 NODE_ENV=development
-MONGO_URI=
-JWT_SECRET=
-SUPERVISOR_SECRET=
-ADMIN_SECRET_KEY=
-JWT_EXPIRE=
-COOKIE_EXPIRE=
+
+MONGO_URI=                       # mongodb+srv://<user>:<pass>@cluster.mongodb.net/greensnap
+JWT_SECRET=                       # strong random secret
+SUPERVISOR_SECRET=                # used for supervisor registration validation
+ADMIN_SECRET_KEY=                 # used for admin creation/secure actions
+JWT_EXPIRE=                       # e.g. 7d
+COOKIE_EXPIRE=                    # seconds, e.g. 604800
+
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
+
 SMTP_HOST=
 SMTP_SERVICE=
 SMTP_PORT=
 SMTP_MAIL=
 SMTP_PASSWORD=
-HF_API_URL=
-HF_TIMEOUT=
-GRADIO_SERVER_NAME=
+
+HF_API_URL=                        # optional: Hugging Face or custom inference endpoint
+HF_TIMEOUT=                        # ms, e.g. 30000
+GRADIO_SERVER_NAME=                # optional dev/testing
 GRADIO_SERVER_PORT=
 HF_HOME=
-CACHE_TTL=
+CACHE_TTL=                         # seconds for caching model responses
+
 PERMANENT_RESOLVE_DISTANCE_METERS=10
 CONFIDENCE_AUTO_ACCEPT=0.85
 CONFIDENCE_RETAKE=0.65
-PERMANENT_RESOLVE_DISTANCE_METERS controls the admin geofence (default 10 m).
 
-CONFIDENCE_AUTO_ACCEPT / CONFIDENCE_RETAKE control the MobileNet decision thresholds.
+Decision logic (theory, concise)
+MobileNetV3 — why & how
 
-Architecture (short)
-Mobile clients (React Native Expo): citizens submit reports; supervisors manage & resolve on mobile.
+MobileNetV3-Large is chosen for its balance of accuracy and efficiency on edge/mobile workflows. In GreenSnap it is used as a whole-image binary classifier (waste vs non-waste), returning a single confidence score used by the backend to decide the next action.
 
-Admin portal (React): administrators review and permanently validate or reject reports.
+Confidence thresholding (configurable)
 
-Backend (this repo): Node/Express + MongoDB. Handles auth, reports lifecycle, model inference calls (to HF or a local/remote model service), Cloudinary image uploads, attendance & worker records, analytics, and the geospatial validation step.
+confidence >= CONFIDENCE_AUTO_ACCEPT → auto-accept (report proceeds as waste).
 
-Theory — How verification works
-MobileNetV3-Large (image classification)
-MobileNetV3 is a modern, efficient convolutional backbone optimized for latency and mobile/edge deployment.
+CONFIDENCE_RETAKE < confidence < CONFIDENCE_AUTO_ACCEPT → low confidence → user is asked to retake the photo.
 
-For GreenSnap we use MobileNetV3-Large as a whole-image binary classifier (waste vs non-waste). Benefits: fast inference, small model footprint, and good accuracy for on-device / lightweight inference services.
+confidence <= CONFIDENCE_RETAKE → non-waste → report is rejected.
 
-Confidence thresholding (decision logic)
-The model returns a single confidence score for "waste". The backend applies simple, configurable thresholds:
+This reduces human review load while keeping a clear, auditable rule-set.
 
-confidence >= CONFIDENCE_AUTO_ACCEPT → automatically accept as waste.
+Haversine geoverification (concise)
 
-CONFIDENCE_RETAKE < confidence < CONFIDENCE_AUTO_ACCEPT → low confidence → client is asked to retake or resubmit for clarity.
+To ensure a cleanup happened at the reported place, the admin computes great-circle distance between reported coordinates and resolved coordinates. If distance ≤ PERMANENT_RESOLVE_DISTANCE_METERS (default 10 m) → permanent-resolved; otherwise → rejected. The computed distance is stored for audit.
 
-confidence <= CONFIDENCE_RETAKE → classify as non-waste (reject).
+// Haversine — returns meters
+function deg2rad(deg){ return deg * (Math.PI / 180); }
+function haversineMeters(lat1, lon1, lat2, lon2){
+  const R = 6371; // km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(deg2rad(lat1))*Math.cos(deg2rad(lat2))*Math.sin(dLon/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c * 1000;
+}
 
-This rule reduces false positives, minimizes manual review load, and maintains predictable behavior.
 
-Haversine distance (geo verification)
-Final admin validation compares reported coordinates vs. resolved coordinates using the Haversine formula (great-circle distance).
+Note: MongoDB GeoJSON stores coordinates as [longitude, latitude]. Convert to (lat, lon) before calling the helper.
 
-If the computed distance ≤ PERMANENT_RESOLVE_DISTANCE_METERS (default 10 m), the report is permanently resolved and the verified distance is recorded. Otherwise the report is rejected and the distance is stored for audit and feedback.
+Model integration (recommended options)
 
-Using a strict distance check enforces real location-based accountability (not just a “done” flag).
+External inference service (recommended for Render):
+Host the MobileNetV3 model on an inference endpoint (Hugging Face, TF Serving, or a small Python microservice). The backend forwards images and receives { label, confidence }. This keeps the Render service lightweight and stable.
 
-Model integration options (practical)
-External inference (recommended): backend forwards image to Hugging Face / custom inference endpoint (HF_API_URL) and receives { label, confidence }. Keeps backend lightweight and suitable for Render.
+In-process inference (development / testing):
+Use tfjs-node to load a converted MobileNetV3 model inside the Node process. Acceptable for testing but increases memory/CPU usage in production.
 
-In-process inference: use tfjs-node and load MobileNetV3 locally. Works for testing, but consumes more memory on single instances—less optimal for Render production.
+Deployment on Render (notes)
 
-Deployment notes (Render)
-This repo is designed to run as a Render Web Service (no Docker required).
+Create a Web Service and connect this GitHub repo.
 
-Set all .env keys in the Render dashboard (never commit .env).
+Use npm start as the start command. Render will set the PORT env variable; you may leave PORT=3000 as default.
 
-Use npm start (or your configured start script). Render sets PORT automatically if needed.
+Add all sensitive keys in Render's Environment settings (do not upload .env).
 
-Recommendation: offload model inference to an external service (HuggingFace or a separate inference instance) to keep the Render service lightweight and stable.
+For production stability, offload model inference to an external service (Hugging Face or a dedicated inference instance).
 
-UX highlights (what this backend supports)
-Model-based pre-filtering of reports (auto-accept / retake / reject)
+Monitor logs and response times for any POST /models/predict calls — model latency impacts UX.
 
-Supervisor workflow: pending → in-progress / out-of-scope (comment recorded with date/time) → resolve (captured live GPS + photo)
+UX & product highlights supported by this backend
 
-Admin validation: Haversine check, admin comment, verified distance, permanent-resolve or reject
+Citizens: submit geo-tagged reports, view report lifecycle & leaderboard points.
 
-Worker management: add workers, mark attendance, record tasks completed, daily summaries & top workers
+Supervisors (mobile): view pending queue, mark in-progress / out-of-scope with recorded comments & timestamps, resolve with live cleanup photo + GPS, manage workers and attendance, see performance summaries.
 
-Citizen features supported via backend: leaderboard points, profile report lifecycle with timestamps, and map-based location comparison
+Admins (web): monitor full lifecycle, run Haversine validation, view verified distances and admin comments, manage supervisors/workers, and access basic analytics.
 
-Credits & contact
+Maintainers & credits
+
 Maintainers: Muhammad Ali, Moeez Abdullah
 
 Supervisor: Abid Jameel
 
-Repo: https://github.com/Muhammad5Ali/GS_Admin
+Repository: https://github.com/Muhammad5Ali/GS_Admin
 
 License
-MIT
 
-yaml
-Copy code
+MIT — see LICENSE file.
 
----
+If you’d like, I can:
 
-If you want, I can:
-- Produce a compact `ENV_TEMPLATE` file (without secrets) you can add to the repo.  
-- Create a 1-page CONTRIBUTING.md for quick onboarding. Which would you like next?
+Add a one-page CONTRIBUTING.md tailored for new contributors, or
+
+Produce a short ENV_TEMPLATE (safe to commit) that developers can copy to .env.local.
