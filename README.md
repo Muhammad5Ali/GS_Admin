@@ -182,4 +182,29 @@ function haversineMeters(lat1, lon1, lat2, lon2) {
 ## Product / UX Highlights Supported by This Backend
 
 * **Citizen:** submit geo‑tagged reports, view report lifecycle, earn leaderboard points for verified reports.
-* **Supervisor (mobile):** view pending queue, mark in‑
+* **Supervisor (mobile):** view pending queue, mark in‑progress / out‑of‑scope with comments & timestamps, resolve with live GPS + photo, manage workers & attendance, view performance summaries.
+* **Admin (web):** monitor full lifecycle, run Haversine validation, view verified distances & admin comments, manage supervisors & workers, access lightweight analytics.
+
+---
+
+
+
+## Contributing
+
+Contributions are welcome!
+
+* Open an issue to discuss major changes.
+* Create feature branches and submit PRs with clear descriptions and tests where appropriate.
+* **Do not** commit secrets, model binaries, or dataset dumps to the repository — use environment variables and external model registries.
+
+If you'd like, the maintainers can add a `CONTRIBUTING.md` for new contributors or provide an `ENV_TEMPLATE` (safe to commit) that developers can copy into `.env.local`.
+
+---
+
+## License
+
+This project is licensed under the **MIT License** — see the `LICENSE` file for details.
+
+---
+
+*Last updated: 2025-09-10*
